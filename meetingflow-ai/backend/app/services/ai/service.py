@@ -1,0 +1,100 @@
+from sqlalchemy.orm import Session
+
+from app.core.config import get_settings
+from app.models.action_item import ActionItem
+from app.models.decision import Decision
+from app.models.follow_up_email_draft import FollowUpEmailDraft
+from app.models.meeting import Meeting
+from app.models.unresolved_issue import UnresolvedIssue
+from app.schemas.analysis import MeetingAnalysisResult
+from app.services.ai.base import MeetingAnalyzer
+from app.services.ai.groq_analyzer import AIProviderError, GroqMeetingAnalyzer
+from app.services.ai.mock_analyzer import MockMeetingAnalyzer
+from app.services.rag.service import get_rag_service
+
+
+class MeetingAnalysisUnavailableError(Exception):
+    pass
+
+
+def get_meeting_analyzer() -> MeetingAnalyzer:
+    settings = get_settings()
+    if settings.ai_provider.lower() == "mock":
+        return MockMeetingAnalyzer()
+    return GroqMeetingAnalyzer(
+        api_key=settings.groq_api_key,
+        model=settings.groq_model,
+        base_url=settings.groq_base_url,
+        timeout_seconds=settings.groq_timeout_seconds,
+        max_transcript_chars=settings.ai_max_transcript_chars,
+    )
+
+
+def analyze_and_persist_meeting(
+    db: Session,
+    meeting: Meeting,
+    analyzer: MeetingAnalyzer | None = None,
+) -> MeetingAnalysisResult:
+    analyzer = analyzer or get_meeting_analyzer()
+    rag_service = get_rag_service()
+    rag_context = rag_service.build_analysis_context(meeting)
+    try:
+        result = analyzer.analyze(meeting, rag_context=rag_context)
+    except AIProviderError as exc:
+        settings = get_settings()
+        if settings.environment.lower() in {"local", "development", "dev"} and settings.ai_mock_fallback:
+            result = MockMeetingAnalyzer().analyze(meeting, rag_context=rag_context)
+        else:
+            raise MeetingAnalysisUnavailableError(str(exc)) from exc
+
+    meeting.summary = result.summary
+    meeting.decisions.clear()
+    meeting.action_items.clear()
+    meeting.unresolved_issues.clear()
+    meeting.follow_up_email_drafts.clear()
+
+    meeting.decisions.extend(
+        Decision(
+            content=decision.content,
+            reason=decision.reason,
+            source_text=decision.source_text,
+            confidence=decision.confidence,
+        )
+        for decision in result.decisions
+    )
+    meeting.action_items.extend(
+        ActionItem(
+            assignee=item.assignee,
+            description=item.description,
+            due_date=item.due_date,
+            priority=item.priority,
+            confidence=item.confidence,
+            source_text=item.source_text,
+        )
+        for item in result.action_items
+    )
+    meeting.unresolved_issues.extend(
+        UnresolvedIssue(
+            content=issue.content,
+            owner=issue.owner,
+            next_step=issue.next_step,
+            source_text=issue.source_text,
+        )
+        for issue in result.unresolved_issues
+    )
+    meeting.follow_up_email_drafts.append(
+        FollowUpEmailDraft(
+            subject=result.follow_up_email.subject,
+            body=result.follow_up_email.body,
+            recipients=result.follow_up_email.recipients,
+        )
+    )
+
+    db.add(meeting)
+    db.commit()
+    db.refresh(meeting)
+    rag_service.index_meeting_transcript(meeting)
+    rag_service.index_meeting_summary(meeting)
+    rag_service.index_decisions(meeting, meeting.decisions)
+    rag_service.index_action_items(meeting, meeting.action_items)
+    return result
