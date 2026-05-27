@@ -36,11 +36,11 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="grid min-h-screen grid-cols-1 bg-slate-50 lg:grid-cols-[0.95fr_1.05fr]">
+    <main className="work-surface grid min-h-screen grid-cols-1 lg:grid-cols-[0.95fr_1.05fr]">
       <section className="flex items-center justify-center px-6 py-12">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle>{mode === "login" ? "로그인" : "회원가입"}</CardTitle>
+            <CardTitle className="ai-gradient-text">{mode === "login" ? "로그인" : "회원가입"}</CardTitle>
             <p className="mt-2 text-sm text-muted-foreground">
               회의 이후 실행 업무까지 정리하는 AI 워크스페이스에 접속합니다.
             </p>
@@ -61,7 +61,7 @@ export default function LoginPage() {
                   required
                 />
               </label>
-              {error ? <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
+              {error ? <p className="rounded-md border border-red-200 bg-red-50/85 px-3 py-2 text-sm text-red-700">{error}</p> : null}
               <Button className="w-full" disabled={loading}>
                 {loading ? "처리 중" : mode === "login" ? "로그인" : "계정 만들기"}
                 <ArrowRight className="h-4 w-4" />
@@ -76,15 +76,15 @@ export default function LoginPage() {
           </CardContent>
         </Card>
       </section>
-      <section className="hidden border-l border-border bg-white px-12 py-12 lg:block">
+      <section className="hidden border-l border-white/60 bg-white/52 px-12 py-12 backdrop-blur-xl lg:block">
         <div className="flex h-full max-w-2xl flex-col justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium">
+            <div className="ai-pill inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium">
               <ShieldCheck className="h-4 w-4" />
               승인 기반 Mock 연동
             </div>
             <h1 className="mt-8 text-4xl font-semibold tracking-normal text-slate-950">
-              회의록을 실행 가능한 후속 업무로 바꿉니다.
+              회의록을 <span className="ai-gradient-text">실행 가능한 후속 업무</span>로 바꿉니다.
             </h1>
             <p className="mt-4 max-w-xl text-base leading-7 text-slate-600">
               MeetingFlow AI는 요약에서 멈추지 않고 결정사항, 담당자, 마감일, 후속 메일 초안까지 한 번에 정리합니다.
@@ -92,7 +92,7 @@ export default function LoginPage() {
           </div>
           <div className="grid grid-cols-3 gap-3">
             {["요약", "액션 아이템", "메일 초안"].map((item) => (
-              <div key={item} className="rounded-lg border border-border bg-slate-50 px-4 py-5 text-sm font-medium">
+              <div key={item} className="ai-pill rounded-lg px-4 py-5 text-sm font-medium">
                 <Mail className="mb-3 h-4 w-4 text-slate-500" />
                 {item}
               </div>

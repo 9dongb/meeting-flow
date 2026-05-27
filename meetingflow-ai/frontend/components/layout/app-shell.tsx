@@ -38,19 +38,29 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   if (checkingAuth) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 text-sm text-slate-500">
-        로그인 상태를 확인하는 중입니다.
+      <div className="work-surface flex min-h-screen items-center justify-center px-5">
+        <div className="ai-pill w-full max-w-sm rounded-xl px-5 py-4 text-sm text-slate-600">
+          <div className="mb-3 flex items-center gap-2 font-medium">
+            <span className="ai-brand-mark flex h-8 w-8 items-center justify-center rounded-md text-white">
+              <Bot className="h-4 w-4" />
+            </span>
+            로그인 상태를 확인하는 중입니다.
+          </div>
+          <div className="ai-loader" />
+        </div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen work-surface">
-      <header className="sticky top-0 z-20 border-b border-border bg-white/90 backdrop-blur">
+      <header className="ai-topbar sticky top-0 z-20 border-b backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-5">
           <Link href="/dashboard" className="flex items-center gap-2 text-sm font-semibold">
-            <Bot className="h-5 w-5" />
-            MeetingFlow AI
+            <span className="ai-brand-mark flex h-8 w-8 items-center justify-center rounded-md text-white shadow-sm">
+              <Bot className="h-4 w-4" />
+            </span>
+            <span className="ai-gradient-text">MeetingFlow AI</span>
           </Link>
           <nav className="flex items-center gap-1">
             <Link href="/dashboard" className="inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm hover:bg-slate-100">

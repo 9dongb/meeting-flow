@@ -83,7 +83,7 @@ function KanbanColumn({
   onStatusChange: (item: ActionItemWithMeeting, status: ActionStatus) => void;
 }) {
   return (
-    <Card className={status === "done" ? "bg-slate-50" : ""}>
+    <Card className={status === "done" ? "bg-white/62" : ""}>
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -93,7 +93,7 @@ function KanbanColumn({
             </CardTitle>
             <p className="mt-2 text-xs text-slate-500">{description}</p>
           </div>
-          <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">{items.length}</span>
+          <span className="ai-pill rounded-md px-2 py-1 text-xs font-medium text-slate-600">{items.length}</span>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -121,7 +121,7 @@ function ActionItemCard({
   onStatusChange: (item: ActionItemWithMeeting, status: ActionStatus) => void;
 }) {
   return (
-    <div className="rounded-md border border-border bg-white p-3 shadow-sm">
+    <div className="rounded-md border border-white/70 bg-white/78 p-3 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:shadow-md">
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm font-medium leading-5">{item.description}</p>
         <PriorityBadge priority={item.priority} />
@@ -140,7 +140,9 @@ function ActionItemCard({
       <p className="mt-2 text-xs text-slate-500">AI 신뢰도 {confidenceLabel(item.confidence)}</p>
 
       {item.source_text ? (
-        <p className="mt-3 line-clamp-2 rounded bg-slate-50 px-2 py-1.5 text-xs leading-5 text-slate-500">{item.source_text}</p>
+        <p className="mt-3 line-clamp-2 rounded border border-slate-200/70 bg-white/60 px-2 py-1.5 text-xs leading-5 text-slate-500">
+          {item.source_text}
+        </p>
       ) : null}
 
       <div className="mt-3 flex flex-wrap gap-2">

@@ -100,15 +100,15 @@ export default function NewMeetingPage() {
     <AppShell>
       <div className="mx-auto mb-8 max-w-4xl">
         <p className="text-sm font-medium text-slate-500">New Meeting</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-normal">회의록 생성</h1>
+        <h1 className="ai-gradient-text mt-1 text-2xl font-semibold tracking-normal">회의록 생성</h1>
       </div>
 
       {!mode ? (
         <section className="mx-auto grid max-w-4xl gap-4 md:grid-cols-2">
           <button className="text-left" onClick={() => selectMode("manual")}>
-            <Card className="h-full transition hover:border-slate-400 hover:bg-slate-50">
+            <Card className="h-full transition hover:-translate-y-0.5 hover:border-slate-400">
               <CardHeader>
-                <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-md bg-slate-100 text-slate-700">
+                <div className="ai-brand-mark mb-3 inline-flex h-10 w-10 items-center justify-center rounded-md text-white">
                   <Keyboard className="h-5 w-5" />
                 </div>
                 <CardTitle>직접 작성</CardTitle>
@@ -122,9 +122,9 @@ export default function NewMeetingPage() {
           </button>
 
           <button className="text-left" onClick={() => selectMode("upload")}>
-            <Card className="h-full transition hover:border-slate-400 hover:bg-slate-50">
+            <Card className="h-full transition hover:-translate-y-0.5 hover:border-slate-400">
               <CardHeader>
-                <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-md bg-slate-100 text-slate-700">
+                <div className="ai-brand-mark mb-3 inline-flex h-10 w-10 items-center justify-center rounded-md text-white">
                   <Upload className="h-5 w-5" />
                 </div>
                 <CardTitle>파일 업로드</CardTitle>
@@ -194,15 +194,15 @@ export default function NewMeetingPage() {
                   </label>
                 </>
               ) : (
-                <label className="block rounded-md border border-dashed border-slate-300 bg-slate-50 p-5">
+                <label className="ai-pill block rounded-md border-dashed p-5">
                   <div className="flex flex-col items-center text-center">
-                    <div className="mb-3 rounded-md bg-white p-3 text-slate-600">
+                    <div className="ai-brand-mark mb-3 rounded-md p-3 text-white">
                       <FileText className="h-6 w-6" />
                     </div>
                     <p className="text-sm font-medium">회의록 파일 업로드</p>
                     <p className="mt-1 text-xs text-slate-500">txt, docx 파일을 지원합니다.</p>
                     <Input
-                      className="mt-5 bg-white"
+                      className="mt-5 bg-white/86"
                       type="file"
                       accept=".txt,.docx,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                       onChange={onFileChange}

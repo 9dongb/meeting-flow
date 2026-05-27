@@ -67,7 +67,7 @@ export default function DashboardPage() {
       <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <p className="text-sm font-medium text-slate-500">Dashboard</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-normal">회의 후속 업무 보드</h1>
+          <h1 className="ai-gradient-text mt-1 text-2xl font-semibold tracking-normal">회의 후속 업무 보드</h1>
         </div>
         <Link href="/meetings/new">
           <Button>
@@ -115,7 +115,7 @@ export default function DashboardPage() {
                   <Link
                     key={item.id}
                     href={`/meetings/${item.meeting_id}/actions`}
-                    className="block rounded-md border border-border bg-white p-3 transition hover:bg-slate-50"
+                    className="ai-pill block rounded-md p-3 transition hover:bg-white"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <p className="text-sm font-medium leading-5">{item.description}</p>
@@ -144,7 +144,7 @@ export default function DashboardPage() {
               ) : (
                 <div className="divide-y divide-border">
                   {meetings.slice(0, 6).map((meeting) => (
-                    <Link key={meeting.id} href={`/meetings/${meeting.id}`} className="block px-5 py-4 transition hover:bg-slate-50">
+                    <Link key={meeting.id} href={`/meetings/${meeting.id}`} className="block px-5 py-4 transition hover:bg-white/64">
                       <p className="font-medium">{meeting.title}</p>
                       <p className="mt-1 text-sm text-slate-500">{formatDate(meeting.meeting_date)}</p>
                     </Link>
@@ -167,7 +167,7 @@ function Metric({ title, value, icon }: { title: string; value: number; icon: Re
           <p className="text-sm text-slate-500">{title}</p>
           <p className="mt-2 text-2xl font-semibold">{value}</p>
         </div>
-        <div className="rounded-md bg-slate-100 p-2 text-slate-600">{icon}</div>
+        <div className="ai-brand-mark rounded-md p-2 text-white shadow-sm">{icon}</div>
       </CardContent>
     </Card>
   );
