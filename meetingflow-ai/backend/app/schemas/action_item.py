@@ -1,8 +1,24 @@
 from datetime import date
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.models.enums import ActionPriority, ActionStatus
+
+
+class ActionItemWithMeetingRead(BaseModel):
+    id: int
+    meeting_id: int
+    meeting_title: str
+    meeting_date: date | None = None
+    assignee: str | None = None
+    description: str
+    due_date: date | None = None
+    priority: ActionPriority
+    status: ActionStatus
+    confidence: float
+    source_text: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ActionItemUpdate(BaseModel):

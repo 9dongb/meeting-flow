@@ -37,6 +37,11 @@ export interface ActionItem {
   source_text?: string | null;
 }
 
+export interface ActionItemWithMeeting extends ActionItem {
+  meeting_title: string;
+  meeting_date?: string | null;
+}
+
 export interface UnresolvedIssue {
   id: number;
   content: string;

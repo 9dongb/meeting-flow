@@ -82,6 +82,12 @@ def test_create_get_analyze_and_update_action_item(client: TestClient) -> None:
     action_items = action_items_response.json()
     assert len(action_items) >= 1
 
+    board_response = client.get("/action-items")
+    assert board_response.status_code == 200
+    board_items = board_response.json()
+    assert len(board_items) >= 1
+    assert board_items[0]["meeting_title"] == "MVP 스모크 테스트"
+
     action_item_id = action_items[0]["id"]
     update_response = client.patch(
         f"/action-items/{action_item_id}",

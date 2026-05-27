@@ -1,5 +1,6 @@
 import type {
   ActionItem,
+  ActionItemWithMeeting,
   ActionStatus,
   AuthResponse,
   MarkdownExportResponse,
@@ -79,6 +80,9 @@ export const api = {
   },
   listActionItems(meetingId: number) {
     return request<ActionItem[]>(`/meetings/${meetingId}/action-items`);
+  },
+  listAllActionItems() {
+    return request<ActionItemWithMeeting[]>("/action-items");
   },
   updateActionItem(id: number, payload: Partial<ActionItem> & { status?: ActionStatus }) {
     return request<ActionItem>(`/action-items/${id}`, {
