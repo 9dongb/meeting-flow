@@ -57,7 +57,7 @@ select {
 
 .ai-card {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   border-color: rgba(148, 163, 184, 0.36);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.76)),

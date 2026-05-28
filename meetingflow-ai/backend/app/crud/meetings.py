@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.models.meeting import Meeting
 from app.models.participant import Participant
-from app.schemas.meeting import MeetingCreate
+from app.schemas.meeting import MeetingCreate, MeetingUpdate
 
 
 def list_meetings(db: Session, team_id: int) -> list[Meeting]:
@@ -54,3 +54,21 @@ def create_meeting(db: Session, user_id: int, team_id: int, meeting_in: MeetingC
 def delete_meeting(db: Session, meeting: Meeting) -> None:
     db.delete(meeting)
     db.commit()
+
+
+def update_meeting(db: Session, meeting: Meeting, meeting_in: MeetingUpdate) -> Meeting:
+    update_data = meeting_in.model_dump(exclude_unset=True, exclude={"participants"})
+    for field, value in update_data.items():
+        setattr(meeting, field, value)
+
+    if meeting_in.participants is not None:
+        meeting.participants = [
+            Participant(name=participant.name, email=participant.email)
+            for participant in meeting_in.participants
+            if participant.name.strip()
+        ]
+
+    db.add(meeting)
+    db.commit()
+    db.refresh(meeting)
+    return meeting

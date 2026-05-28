@@ -97,6 +97,17 @@ def test_create_get_analyze_and_update_action_item(client: TestClient) -> None:
     assert update_response.json()["status"] == "done"
     assert update_response.json()["description"] == "검토 완료 상태로 업데이트한다."
 
+    meeting_update_response = client.patch(
+        f"/meetings/{meeting_id}",
+        json={"title": "수정된 회의명", "transcript": "수정된 원문"},
+    )
+    assert meeting_update_response.status_code == 200
+    assert meeting_update_response.json()["title"] == "수정된 회의명"
+
+    delete_response = client.delete(f"/meetings/{meeting_id}")
+    assert delete_response.status_code == 204
+    assert client.get(f"/meetings/{meeting_id}").status_code == 404
+
 
 def test_users_cannot_access_each_others_data(client: TestClient) -> None:
     register(client, email="owner@example.com")

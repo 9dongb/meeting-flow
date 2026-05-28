@@ -92,6 +92,32 @@ class MeetingCreate(BaseModel):
         return value or None
 
 
+class MeetingUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    project_name: str | None = Field(default=None, max_length=255)
+    meeting_date: date | None = None
+    transcript: str | None = Field(default=None, max_length=200000)
+    participants: list[ParticipantCreate] | None = None
+
+    @field_validator("title")
+    @classmethod
+    def strip_optional_title(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        value = value.strip()
+        if not value:
+            raise ValueError("Meeting title is required")
+        return value
+
+    @field_validator("project_name")
+    @classmethod
+    def strip_optional_project_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        value = value.strip()
+        return value or None
+
+
 class MeetingRead(BaseModel):
     id: int
     user_id: int

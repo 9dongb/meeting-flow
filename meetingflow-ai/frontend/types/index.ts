@@ -94,6 +94,14 @@ export interface MeetingCreatePayload {
   participants: Array<{ name: string; email?: string | null }>;
 }
 
+export interface MeetingUpdatePayload {
+  title?: string;
+  project_name?: string | null;
+  meeting_date?: string | null;
+  transcript?: string;
+  participants?: Array<{ name: string; email?: string | null }>;
+}
+
 export interface MeetingAnalysisResult {
   summary: string;
   topics: string[];

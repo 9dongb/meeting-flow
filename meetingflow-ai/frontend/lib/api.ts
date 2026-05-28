@@ -7,6 +7,7 @@ import type {
   Meeting,
   MeetingAnalysisResult,
   MeetingCreatePayload,
+  MeetingUpdatePayload,
   MockIntegrationResponse,
   Team
 } from "@/types";
@@ -90,6 +91,15 @@ export const api = {
   },
   getMeeting(id: number) {
     return request<Meeting>(`/meetings/${id}`);
+  },
+  updateMeeting(id: number, payload: MeetingUpdatePayload) {
+    return request<Meeting>(`/meetings/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload)
+    });
+  },
+  deleteMeeting(id: number) {
+    return request<void>(`/meetings/${id}`, { method: "DELETE" });
   },
   analyzeMeeting(id: number) {
     return request<MeetingAnalysisResult>(`/meetings/${id}/analyze`, { method: "POST" });

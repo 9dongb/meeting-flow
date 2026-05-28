@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException, status
 
 from app.api.deps import CurrentUser, DbSession
-from app.crud.meetings import create_meeting, delete_meeting, get_meeting, list_meetings
+from app.crud.meetings import create_meeting, delete_meeting, get_meeting, list_meetings, update_meeting
 from app.crud.teams import get_active_team
 from app.schemas.analysis import MeetingAnalysisResult
-from app.schemas.meeting import MeetingCreate, MeetingDetail, MeetingRead
+from app.schemas.meeting import MeetingCreate, MeetingDetail, MeetingRead, MeetingUpdate
 from app.services.ai.service import MeetingAnalysisUnavailableError, analyze_and_persist_meeting
 
 
@@ -43,6 +43,20 @@ def remove_meeting(meeting_id: int, db: DbSession, current_user: CurrentUser) ->
     if not meeting:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found")
     delete_meeting(db, meeting)
+
+
+@router.patch("/{meeting_id}", response_model=MeetingDetail)
+def patch_meeting(
+    meeting_id: int,
+    meeting_in: MeetingUpdate,
+    db: DbSession,
+    current_user: CurrentUser,
+) -> MeetingDetail:
+    team = get_active_team(db, current_user)
+    meeting = get_meeting(db, meeting_id, team.id)
+    if not meeting:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found")
+    return update_meeting(db, meeting, meeting_in)
 
 
 @router.post("/{meeting_id}/analyze", response_model=MeetingAnalysisResult)

@@ -2,25 +2,31 @@
 
 import { FileText } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { IntegrationActions } from "@/components/meetings/integration-actions";
+import { MeetingActionsMenu } from "@/components/meetings/meeting-actions-menu";
+import { MeetingEditForm } from "@/components/meetings/meeting-edit-form";
 import { PriorityBadge, StatusBadge } from "@/components/meetings/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState, Feedback, LoadingState } from "@/components/ui/feedback";
 import { api } from "@/lib/api";
 import { confidenceLabel, formatDate } from "@/lib/utils";
-import type { Meeting } from "@/types";
+import type { Meeting, MeetingUpdatePayload } from "@/types";
 
 export default function MeetingDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const meetingId = Number(params.id);
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!meetingId) return;
@@ -31,9 +37,41 @@ export default function MeetingDetailPage() {
       .finally(() => setLoading(false));
   }, [meetingId]);
 
+  async function updateMeeting(payload: MeetingUpdatePayload) {
+    if (!meeting) return;
+    setSaving(true);
+    setError("");
+    setMessage("");
+    try {
+      const updated = await api.updateMeeting(meeting.id, payload);
+      setMeeting(updated);
+      setEditing(false);
+      setMessage("회의 정보를 수정했습니다.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "회의 수정에 실패했습니다.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deleteMeeting() {
+    if (!meeting || !window.confirm("이 회의와 연결된 액션 아이템을 모두 삭제할까요?")) return;
+    setSaving(true);
+    setError("");
+    setMessage("");
+    try {
+      await api.deleteMeeting(meeting.id);
+      router.replace("/dashboard");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "회의 삭제에 실패했습니다.");
+      setSaving(false);
+    }
+  }
+
   return (
     <AppShell>
       {error ? <Feedback variant="error" className="mb-5">{error}</Feedback> : null}
+      {message ? <Feedback variant="success" className="mb-5">{message}</Feedback> : null}
       {loading ? (
         <LoadingState>회의 정보를 불러오는 중입니다.</LoadingState>
       ) : !meeting ? (
@@ -48,10 +86,29 @@ export default function MeetingDetailPage() {
                 {formatDate(meeting.meeting_date)} · 참석자 {meeting.participants.length}명
               </p>
             </div>
-            <Link href={`/meetings/${meeting.id}/actions`}>
-              <Button variant="secondary">액션 아이템 검토</Button>
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link href={`/meetings/${meeting.id}/actions`}>
+                <Button variant="secondary">액션 아이템 검토</Button>
+              </Link>
+              <MeetingActionsMenu onEdit={() => setEditing(true)} onDelete={() => void deleteMeeting()} disabled={saving} />
+            </div>
           </div>
+
+          {editing ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>회의 정보 수정</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <MeetingEditForm
+                  meeting={meeting}
+                  saving={saving}
+                  onCancel={() => setEditing(false)}
+                  onSubmit={updateMeeting}
+                />
+              </CardContent>
+            </Card>
+          ) : null}
 
           <Card>
             <CardHeader>

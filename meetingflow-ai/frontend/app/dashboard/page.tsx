@@ -7,6 +7,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { ActionKanbanBoard } from "@/components/meetings/action-kanban";
+import { MeetingActionsMenu } from "@/components/meetings/meeting-actions-menu";
+import { MeetingEditForm } from "@/components/meetings/meeting-edit-form";
 import { StatusBadge } from "@/components/meetings/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +16,7 @@ import { EmptyState, Feedback, LoadingState } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
-import type { ActionItemWithMeeting, ActionStatus, Meeting, Team } from "@/types";
+import type { ActionItemWithMeeting, ActionStatus, Meeting, MeetingUpdatePayload, Team } from "@/types";
 
 export default function DashboardPage() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
@@ -24,6 +26,8 @@ export default function DashboardPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [editingMeetingId, setEditingMeetingId] = useState<number | null>(null);
+  const [savingMeetingId, setSavingMeetingId] = useState<number | null>(null);
 
   const loadDashboard = useCallback(() => {
     setLoading(true);
@@ -71,6 +75,58 @@ export default function DashboardPage() {
     }
   }
 
+  async function deleteActionItem(item: ActionItemWithMeeting) {
+    if (!window.confirm("이 액션 아이템을 삭제할까요?")) return;
+    setUpdatingId(item.id);
+    setMessage("");
+    setError("");
+    try {
+      await api.deleteActionItem(item.id);
+      setActionItems((current) => current.filter((candidate) => candidate.id !== item.id));
+      setMessage("액션 아이템을 삭제했습니다.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "액션 아이템 삭제에 실패했습니다.");
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
+  async function updateMeeting(meeting: Meeting, payload: MeetingUpdatePayload) {
+    setSavingMeetingId(meeting.id);
+    setMessage("");
+    setError("");
+    try {
+      const updated = await api.updateMeeting(meeting.id, payload);
+      setMeetings((current) => current.map((candidate) => (candidate.id === meeting.id ? updated : candidate)));
+      setActionItems((current) =>
+        current.map((item) => (item.meeting_id === meeting.id ? { ...item, meeting_title: updated.title, meeting_date: updated.meeting_date } : item))
+      );
+      setEditingMeetingId(null);
+      setMessage("회의 정보를 수정했습니다.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "회의 수정에 실패했습니다.");
+    } finally {
+      setSavingMeetingId(null);
+    }
+  }
+
+  async function deleteMeeting(meeting: Meeting) {
+    if (!window.confirm("이 회의와 연결된 액션 아이템을 모두 삭제할까요?")) return;
+    setSavingMeetingId(meeting.id);
+    setMessage("");
+    setError("");
+    try {
+      await api.deleteMeeting(meeting.id);
+      setMeetings((current) => current.filter((candidate) => candidate.id !== meeting.id));
+      setActionItems((current) => current.filter((item) => item.meeting_id !== meeting.id));
+      setMessage("회의를 삭제했습니다.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "회의 삭제에 실패했습니다.");
+    } finally {
+      setSavingMeetingId(null);
+    }
+  }
+
   return (
     <AppShell>
       <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -107,7 +163,12 @@ export default function DashboardPage() {
               />
             </Card>
           ) : (
-            <ActionKanbanBoard items={actionItems} updatingId={updatingId} onStatusChange={updateActionStatus} />
+            <ActionKanbanBoard
+              items={actionItems}
+              updatingId={updatingId}
+              onStatusChange={updateActionStatus}
+              onDelete={deleteActionItem}
+            />
           )}
         </div>
 
@@ -145,7 +206,12 @@ export default function DashboardPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>최근 회의</CardTitle>
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle>최근 회의</CardTitle>
+                <Link href="/meetings" className="text-sm font-medium text-slate-500 hover:text-slate-900">
+                  더보기
+                </Link>
+              </div>
             </CardHeader>
             <CardContent className="p-0">
               {loading ? (
@@ -156,11 +222,30 @@ export default function DashboardPage() {
                 <EmptyState title="회의가 없습니다." description="새 회의록을 만들면 여기에 표시됩니다." />
               ) : (
                 <div className="divide-y divide-border">
-                  {meetings.slice(0, 6).map((meeting) => (
-                    <Link key={meeting.id} href={`/meetings/${meeting.id}`} className="block px-5 py-4 transition hover:bg-white/64">
-                      <p className="font-medium">{meeting.title}</p>
-                      <p className="mt-1 text-sm text-slate-500">{formatDate(meeting.meeting_date)}</p>
-                    </Link>
+                  {meetings.slice(0, 5).map((meeting) => (
+                    <div key={meeting.id} className="px-5 py-4 transition hover:bg-white/64">
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+                        <Link href={`/meetings/${meeting.id}`} className="min-w-0">
+                          <p className="truncate font-medium">{meeting.title}</p>
+                          <p className="mt-1 text-sm text-slate-500">{formatDate(meeting.meeting_date)}</p>
+                        </Link>
+                        <MeetingActionsMenu
+                          disabled={savingMeetingId === meeting.id}
+                          onEdit={() => setEditingMeetingId(meeting.id)}
+                          onDelete={() => void deleteMeeting(meeting)}
+                        />
+                      </div>
+                      {editingMeetingId === meeting.id ? (
+                        <div className="mt-4 rounded-md border border-border bg-white/72 p-3">
+                          <MeetingEditForm
+                            meeting={meeting}
+                            saving={savingMeetingId === meeting.id}
+                            onCancel={() => setEditingMeetingId(null)}
+                            onSubmit={(payload) => updateMeeting(meeting, payload)}
+                          />
+                        </div>
+                      ) : null}
+                    </div>
                   ))}
                 </div>
               )}
