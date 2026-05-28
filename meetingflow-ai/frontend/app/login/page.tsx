@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+
 export default function LoginPage() {
   const router = useRouter();
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -47,6 +49,17 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent>
             <form className="space-y-4" onSubmit={onSubmit}>
+              <a
+                className="ai-button-primary inline-flex h-10 w-full items-center justify-center rounded-md px-3 text-sm font-semibold"
+                href={`${API_BASE_URL}/auth/google/login`}
+              >
+                Google로 계속하기
+              </a>
+              <div className="flex items-center gap-3 text-xs text-slate-400">
+                <span className="h-px flex-1 bg-slate-200" />
+                이메일 로그인
+                <span className="h-px flex-1 bg-slate-200" />
+              </div>
               <label className="block space-y-2 text-sm font-medium">
                 <span>이메일</span>
                 <Input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />

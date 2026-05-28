@@ -3,6 +3,7 @@ import type {
   ActionItemWithMeeting,
   ActionStatus,
   AuthResponse,
+  GoogleCalendarStatus,
   MarkdownExportResponse,
   Meeting,
   MeetingAnalysisResult,
@@ -78,6 +79,15 @@ export const api = {
     return request<Team>("/teams/join", {
       method: "POST",
       body: JSON.stringify({ invite_code: inviteCode })
+    });
+  },
+  getGoogleCalendarStatus() {
+    return request<GoogleCalendarStatus>("/integrations/google-calendar/status");
+  },
+  updateGoogleCalendarSettings(payload: { sync_enabled?: boolean; calendar_id?: string }) {
+    return request<GoogleCalendarStatus>("/integrations/google-calendar/settings", {
+      method: "PATCH",
+      body: JSON.stringify(payload)
     });
   },
   listMeetings() {

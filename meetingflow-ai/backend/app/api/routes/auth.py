@@ -1,14 +1,20 @@
-from fastapi import APIRouter, HTTPException, Response, status
+import secrets
+
+from fastapi import APIRouter, HTTPException, Query, Request, Response, status
+from fastapi.responses import RedirectResponse
 
 from app.api.deps import CurrentUser, DbSession
 from app.core.config import get_settings
 from app.core.security import create_access_token
+from app.crud.google_accounts import upsert_google_account
 from app.crud.users import authenticate_user, create_user, get_user_by_email
 from app.schemas.auth import AuthResponse, LoginRequest
 from app.schemas.user import UserCreate, UserRead
+from app.services.google_oauth import LOGIN_SCOPES, GoogleOAuthError, build_google_auth_url, exchange_code_for_tokens, fetch_google_userinfo
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+GOOGLE_LOGIN_STATE_COOKIE = "meetingflow_google_login_state"
 
 
 def _set_auth_cookie(response: Response, token: str) -> None:
@@ -33,6 +39,11 @@ def _clear_auth_cookie(response: Response) -> None:
         samesite=settings.auth_cookie_samesite,
         path="/",
     )
+
+
+def _redirect_frontend(path: str = "/dashboard") -> RedirectResponse:
+    settings = get_settings()
+    return RedirectResponse(f"{settings.frontend_base_url}{path}", status_code=status.HTTP_302_FOUND)
 
 
 @router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
@@ -61,3 +72,77 @@ def me(current_user: CurrentUser) -> UserRead:
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 def logout(response: Response) -> None:
     _clear_auth_cookie(response)
+
+
+@router.get("/google/login")
+def google_login() -> RedirectResponse:
+    settings = get_settings()
+    state = secrets.token_urlsafe(24)
+    try:
+        url = build_google_auth_url(
+            state=state,
+            redirect_uri=settings.google_login_redirect_uri,
+            scopes=LOGIN_SCOPES,
+        )
+    except GoogleOAuthError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+
+    response = RedirectResponse(url, status_code=status.HTTP_302_FOUND)
+    response.set_cookie(
+        key=GOOGLE_LOGIN_STATE_COOKIE,
+        value=state,
+        httponly=True,
+        secure=settings.auth_cookie_secure,
+        samesite=settings.auth_cookie_samesite,
+        max_age=600,
+        path="/",
+    )
+    return response
+
+
+@router.get("/google/callback")
+def google_callback(
+    request: Request,
+    db: DbSession,
+    code: str = Query(...),
+    state: str = Query(...),
+) -> RedirectResponse:
+    settings = get_settings()
+    expected_state = request.cookies.get(GOOGLE_LOGIN_STATE_COOKIE)
+    if not expected_state or expected_state != state:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Google OAuth state")
+
+    try:
+        tokens = exchange_code_for_tokens(code, settings.google_login_redirect_uri)
+        userinfo = fetch_google_userinfo(tokens["access_token"])
+    except GoogleOAuthError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+
+    email = str(userinfo.get("email", "")).lower()
+    google_sub = str(userinfo.get("sub", ""))
+    if not email or not google_sub:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Google account did not return email/sub")
+
+    user = get_user_by_email(db, email)
+    if not user:
+        user = create_user(db, UserCreate(email=email, password=secrets.token_urlsafe(32)))
+    upsert_google_account(
+        db,
+        user=user,
+        google_sub=google_sub,
+        email=email,
+        access_token=tokens.get("access_token"),
+        refresh_token=tokens.get("refresh_token"),
+        expires_in=tokens.get("expires_in"),
+    )
+
+    redirect = _redirect_frontend("/dashboard")
+    _set_auth_cookie(redirect, create_access_token(user.email))
+    redirect.delete_cookie(
+        key=GOOGLE_LOGIN_STATE_COOKIE,
+        httponly=True,
+        secure=settings.auth_cookie_secure,
+        samesite=settings.auth_cookie_samesite,
+        path="/",
+    )
+    return redirect

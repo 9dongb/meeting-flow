@@ -6,6 +6,7 @@ from app.crud.teams import get_active_team
 from app.schemas.analysis import MeetingAnalysisResult
 from app.schemas.meeting import MeetingCreate, MeetingDetail, MeetingRead, MeetingUpdate
 from app.services.ai.service import MeetingAnalysisUnavailableError, analyze_and_persist_meeting
+from app.services.integrations.google_calendar_sync import GoogleCalendarSyncError, GoogleCalendarSyncService
 
 
 router = APIRouter(prefix="/meetings", tags=["meetings"])
@@ -42,6 +43,10 @@ def remove_meeting(meeting_id: int, db: DbSession, current_user: CurrentUser) ->
     meeting = get_meeting(db, meeting_id, team.id)
     if not meeting:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found")
+    try:
+        GoogleCalendarSyncService().delete_meeting_events(db, current_user.id, meeting)
+    except GoogleCalendarSyncError:
+        pass
     delete_meeting(db, meeting)
 
 
@@ -66,9 +71,14 @@ def analyze_meeting(meeting_id: int, db: DbSession, current_user: CurrentUser) -
     if not meeting:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found")
     try:
-        return analyze_and_persist_meeting(db, meeting)
+        result = analyze_and_persist_meeting(db, meeting)
+        db.refresh(meeting)
+        GoogleCalendarSyncService().sync_meeting_action_items(db, current_user.id, meeting)
+        return result
     except MeetingAnalysisUnavailableError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Meeting analysis is unavailable: {exc}",
         ) from exc
+    except GoogleCalendarSyncError:
+        return result

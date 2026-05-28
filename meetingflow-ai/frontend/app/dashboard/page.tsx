@@ -16,12 +16,15 @@ import { EmptyState, Feedback, LoadingState } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
-import type { ActionItemWithMeeting, ActionStatus, Meeting, MeetingUpdatePayload, Team } from "@/types";
+import type { ActionItemWithMeeting, ActionStatus, GoogleCalendarStatus, Meeting, MeetingUpdatePayload, Team } from "@/types";
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
 export default function DashboardPage() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [actionItems, setActionItems] = useState<ActionItemWithMeeting[]>([]);
   const [team, setTeam] = useState<Team | null>(null);
+  const [calendarStatus, setCalendarStatus] = useState<GoogleCalendarStatus | null>(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -32,11 +35,12 @@ export default function DashboardPage() {
   const loadDashboard = useCallback(() => {
     setLoading(true);
     setError("");
-    Promise.all([api.listMeetings(), api.listAllActionItems(), api.getCurrentTeam()])
-      .then(([meetingData, actionData, teamData]) => {
+    Promise.all([api.listMeetings(), api.listAllActionItems(), api.getCurrentTeam(), api.getGoogleCalendarStatus()])
+      .then(([meetingData, actionData, teamData, calendarData]) => {
         setMeetings(meetingData);
         setActionItems(actionData);
         setTeam(teamData);
+        setCalendarStatus(calendarData);
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
@@ -174,6 +178,12 @@ export default function DashboardPage() {
 
         <aside className="space-y-6">
           <TeamPanel team={team} onJoined={loadDashboard} onMessage={setMessage} onError={setError} />
+          <CalendarPanel
+            status={calendarStatus}
+            onStatusChange={setCalendarStatus}
+            onMessage={setMessage}
+            onError={setError}
+          />
 
           <Card>
             <CardHeader>
@@ -254,6 +264,63 @@ export default function DashboardPage() {
         </aside>
       </section>
     </AppShell>
+  );
+}
+
+function CalendarPanel({
+  status,
+  onStatusChange,
+  onMessage,
+  onError
+}: {
+  status: GoogleCalendarStatus | null;
+  onStatusChange: (status: GoogleCalendarStatus) => void;
+  onMessage: (message: string) => void;
+  onError: (message: string) => void;
+}) {
+  const [updating, setUpdating] = useState(false);
+
+  async function toggleSync() {
+    if (!status?.connected) {
+      window.location.href = `${API_BASE_URL}/integrations/google-calendar/connect`;
+      return;
+    }
+    setUpdating(true);
+    onMessage("");
+    onError("");
+    try {
+      const updated = await api.updateGoogleCalendarSettings({ sync_enabled: !status.sync_enabled });
+      onStatusChange(updated);
+      onMessage(updated.sync_enabled ? "Google Calendar 동기화를 켰습니다." : "Google Calendar 동기화를 껐습니다.");
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Google Calendar 설정 변경에 실패했습니다.");
+    } finally {
+      setUpdating(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <CalendarClock className="h-4 w-4" />
+          Google Calendar
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div>
+          <p className="text-sm font-medium">
+            {status?.connected ? (status.sync_enabled ? "동기화 ON" : "연결됨 · 동기화 OFF") : "연결되지 않음"}
+          </p>
+          <p className="mt-1 truncate text-xs text-slate-500">
+            {status?.connected ? `${status.email} · ${status.calendar_id}` : "액션 아이템 마감일을 개인 캘린더에 등록합니다."}
+          </p>
+        </div>
+        <Button className="w-full" variant={status?.sync_enabled ? "secondary" : "default"} disabled={updating} onClick={toggleSync}>
+          {status?.connected ? (status.sync_enabled ? "동기화 끄기" : "동기화 켜기") : "Calendar 연결"}
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 

@@ -15,6 +15,12 @@ class Settings(BaseSettings):
     auth_cookie_secure: bool = False
     auth_cookie_samesite: str = "lax"
     backend_cors_origins: str = "http://localhost:3000"
+    frontend_base_url: str = "http://localhost:3000"
+    token_encryption_key: str | None = None
+    google_client_id: str | None = None
+    google_client_secret: str | None = None
+    google_login_redirect_uri: str = "http://localhost:8000/auth/google/callback"
+    google_calendar_redirect_uri: str = "http://localhost:8000/integrations/google-calendar/callback"
     openai_api_key: str | None = None
     openai_model: str = "gpt-4o-mini"
     openai_base_url: str = "https://api.openai.com/v1"

@@ -25,3 +25,6 @@ class ActionItem(Base):
     source_text: Mapped[str | None] = mapped_column(Text)
 
     meeting: Mapped["Meeting"] = relationship(back_populates="action_items")
+    calendar_links: Mapped[list["ActionItemCalendarLink"]] = relationship(
+        back_populates="action_item", cascade="all, delete-orphan"
+    )

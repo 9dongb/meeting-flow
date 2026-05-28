@@ -17,6 +17,13 @@ export interface Team {
   created_at: string;
 }
 
+export interface GoogleCalendarStatus {
+  connected: boolean;
+  sync_enabled: boolean;
+  email?: string | null;
+  calendar_id: string;
+}
+
 export interface AuthResponse {
   user: User;
 }

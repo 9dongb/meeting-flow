@@ -57,6 +57,21 @@ def test_register_login_and_me(client: TestClient) -> None:
     assert client.get("/auth/me").status_code == 200
 
 
+def test_google_auth_and_calendar_status_defaults(client: TestClient) -> None:
+    login_response = client.get("/auth/google/login", follow_redirects=False)
+    assert login_response.status_code == 503
+
+    register(client)
+    calendar_status = client.get("/integrations/google-calendar/status")
+    assert calendar_status.status_code == 200
+    assert calendar_status.json() == {
+        "connected": False,
+        "sync_enabled": False,
+        "email": None,
+        "calendar_id": "primary",
+    }
+
+
 def test_protected_routes_require_authentication(client: TestClient) -> None:
     assert client.get("/meetings").status_code == 401
     assert client.post("/meetings", json={"title": "No Auth"}).status_code == 401

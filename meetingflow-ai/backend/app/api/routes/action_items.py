@@ -13,6 +13,7 @@ from app.crud.teams import get_active_team
 from app.models.enums import ActionPriority, ActionStatus
 from app.schemas.action_item import ActionItemUpdate, ActionItemWithMeetingRead
 from app.schemas.meeting import ActionItemRead
+from app.services.integrations.google_calendar_sync import GoogleCalendarSyncError, GoogleCalendarSyncService
 
 
 router = APIRouter(tags=["action-items"])
@@ -75,7 +76,12 @@ def patch_action_item(
     item = get_action_item_for_user(db, action_item_id, team.id)
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Action item not found")
-    return update_action_item(db, item, item_in)
+    updated = update_action_item(db, item, item_in)
+    try:
+        GoogleCalendarSyncService().sync_action_item(db, current_user.id, updated)
+    except GoogleCalendarSyncError:
+        pass
+    return updated
 
 
 @router.delete("/action-items/{action_item_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -84,4 +90,8 @@ def remove_action_item(action_item_id: int, db: DbSession, current_user: Current
     item = get_action_item_for_user(db, action_item_id, team.id)
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Action item not found")
+    try:
+        GoogleCalendarSyncService().delete_action_item_event(db, current_user.id, item)
+    except GoogleCalendarSyncError:
+        pass
     delete_action_item(db, item)

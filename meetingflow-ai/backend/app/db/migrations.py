@@ -17,6 +17,10 @@ def run_lightweight_migrations(engine: Engine) -> None:
         if "team_id" not in meeting_columns:
             connection.execute(text("ALTER TABLE meetings ADD COLUMN team_id INTEGER"))
 
+        BaseTableCheck = inspector.get_table_names()
+        if "user_google_accounts" not in BaseTableCheck or "action_item_calendar_links" not in BaseTableCheck:
+            return
+
         users = connection.execute(text("SELECT id, email, active_team_id FROM users")).mappings().all()
         for user in users:
             active_team_id = user["active_team_id"]
