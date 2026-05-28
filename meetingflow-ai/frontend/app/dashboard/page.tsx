@@ -117,13 +117,15 @@ export default function DashboardPage() {
                     href={`/meetings/${item.meeting_id}/actions`}
                     className="ai-pill block rounded-md p-3 transition hover:bg-white"
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <p className="text-sm font-medium leading-5">{item.description}</p>
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+                      <p className="line-clamp-2 min-h-10 text-sm font-medium leading-5">{item.description}</p>
                       <StatusBadge status={item.status} />
                     </div>
-                    <p className="mt-2 text-xs text-slate-500">
-                      {item.assignee || "담당자 미정"} · {formatDate(item.due_date)}
-                    </p>
+                    <div className="mt-2 flex min-w-0 items-center gap-2 text-xs text-slate-500">
+                      <span className="truncate">{item.assignee || "담당자 미정"}</span>
+                      <span className="shrink-0 text-slate-300">·</span>
+                      <span className="shrink-0 whitespace-nowrap">{formatDate(item.due_date)}</span>
+                    </div>
                   </Link>
                 ))
               )}

@@ -17,7 +17,7 @@ export function Badge({
 }: HTMLAttributes<HTMLSpanElement> & { tone?: keyof typeof tones }) {
   return (
     <span
-      className={cn("inline-flex items-center rounded px-2 py-1 text-xs font-medium", tones[tone], className)}
+      className={cn("inline-flex shrink-0 items-center whitespace-nowrap rounded px-2 py-1 text-xs font-medium", tones[tone], className)}
       {...props}
     />
   );

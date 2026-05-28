@@ -10,6 +10,7 @@ from app.schemas.analysis import MeetingAnalysisResult
 from app.services.ai.base import MeetingAnalyzer
 from app.services.ai.groq_analyzer import AIProviderError, GroqMeetingAnalyzer
 from app.services.ai.mock_analyzer import MockMeetingAnalyzer
+from app.services.ai.openai_analyzer import OpenAIMeetingAnalyzer
 from app.services.rag.service import get_rag_service
 
 
@@ -19,8 +20,17 @@ class MeetingAnalysisUnavailableError(Exception):
 
 def get_meeting_analyzer() -> MeetingAnalyzer:
     settings = get_settings()
-    if settings.ai_provider.lower() == "mock":
+    provider = settings.ai_provider.lower()
+    if provider == "mock":
         return MockMeetingAnalyzer()
+    if provider == "openai":
+        return OpenAIMeetingAnalyzer(
+            api_key=settings.openai_api_key,
+            model=settings.openai_model,
+            base_url=settings.openai_base_url,
+            timeout_seconds=settings.openai_timeout_seconds,
+            max_transcript_chars=settings.ai_max_transcript_chars,
+        )
     return GroqMeetingAnalyzer(
         api_key=settings.groq_api_key,
         model=settings.groq_model,
