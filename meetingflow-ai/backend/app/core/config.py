@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     groq_model: str = "llama-3.3-70b-versatile"
     groq_base_url: str = "https://api.groq.com/openai/v1"
     groq_timeout_seconds: float = 45.0
-    ai_provider: str = "groq"
+    ai_provider: str = "openai"
     ai_mock_fallback: bool = True
     ai_max_transcript_chars: int = 20000
     pinecone_api_key: str | None = None
