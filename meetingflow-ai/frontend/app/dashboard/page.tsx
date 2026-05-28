@@ -1,9 +1,9 @@
 "use client";
 
-import { AlertTriangle, CalendarClock, CheckCircle2, FileText, PlusCircle } from "lucide-react";
+import { AlertTriangle, CalendarClock, CheckCircle2, Copy, FileText, PlusCircle, Users } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { ActionKanbanBoard } from "@/components/meetings/action-kanban";
@@ -11,27 +11,36 @@ import { StatusBadge } from "@/components/meetings/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState, Feedback, LoadingState } from "@/components/ui/feedback";
+import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
-import type { ActionItemWithMeeting, ActionStatus, Meeting } from "@/types";
+import type { ActionItemWithMeeting, ActionStatus, Meeting, Team } from "@/types";
 
 export default function DashboardPage() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [actionItems, setActionItems] = useState<ActionItemWithMeeting[]>([]);
+  const [team, setTeam] = useState<Team | null>(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
 
-  useEffect(() => {
-    Promise.all([api.listMeetings(), api.listAllActionItems()])
-      .then(([meetingData, actionData]) => {
+  const loadDashboard = useCallback(() => {
+    setLoading(true);
+    setError("");
+    Promise.all([api.listMeetings(), api.listAllActionItems(), api.getCurrentTeam()])
+      .then(([meetingData, actionData, teamData]) => {
         setMeetings(meetingData);
         setActionItems(actionData);
+        setTeam(teamData);
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
 
   const dueSoon = useMemo(
     () =>
@@ -66,7 +75,7 @@ export default function DashboardPage() {
     <AppShell>
       <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <p className="text-sm font-medium text-slate-500">Dashboard</p>
+          <p className="text-sm font-medium text-slate-500">{team ? team.name : "Dashboard"}</p>
           <h1 className="ai-gradient-text mt-1 text-2xl font-semibold tracking-normal">회의 후속 업무 보드</h1>
         </div>
         <Link href="/meetings/new">
@@ -103,6 +112,8 @@ export default function DashboardPage() {
         </div>
 
         <aside className="space-y-6">
+          <TeamPanel team={team} onJoined={loadDashboard} onMessage={setMessage} onError={setError} />
+
           <Card>
             <CardHeader>
               <CardTitle>마감 임박</CardTitle>
@@ -158,6 +169,86 @@ export default function DashboardPage() {
         </aside>
       </section>
     </AppShell>
+  );
+}
+
+function TeamPanel({
+  team,
+  onJoined,
+  onMessage,
+  onError
+}: {
+  team: Team | null;
+  onJoined: () => void;
+  onMessage: (message: string) => void;
+  onError: (message: string) => void;
+}) {
+  const [inviteCode, setInviteCode] = useState("");
+  const [joining, setJoining] = useState(false);
+
+  async function copyInviteCode() {
+    if (!team?.invite_code) return;
+    await navigator.clipboard.writeText(team.invite_code).catch(() => undefined);
+    onMessage("팀 초대 코드를 복사했습니다.");
+  }
+
+  async function joinTeam() {
+    if (!inviteCode.trim()) return;
+    setJoining(true);
+    onError("");
+    onMessage("");
+    try {
+      await api.joinTeam(inviteCode);
+      setInviteCode("");
+      onMessage("팀에 합류했습니다. 팀 보드를 다시 불러왔습니다.");
+      onJoined();
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "팀 합류에 실패했습니다.");
+    } finally {
+      setJoining(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Users className="h-4 w-4" />
+          팀 워크스페이스
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div>
+          <p className="truncate text-sm font-medium">{team?.name ?? "팀 정보를 불러오는 중"}</p>
+          <p className="mt-1 text-xs text-slate-500">
+            {team ? `${team.member_count}명 · ${team.role}` : "같은 팀은 동일한 칸반 보드를 봅니다."}
+          </p>
+        </div>
+        {team ? (
+          <button
+            className="ai-pill flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-xs"
+            type="button"
+            onClick={copyInviteCode}
+          >
+            <span className="min-w-0">
+              <span className="block text-slate-500">초대 코드</span>
+              <span className="block truncate font-mono font-medium text-slate-800">{team.invite_code}</span>
+            </span>
+            <Copy className="h-4 w-4 shrink-0 text-slate-500" />
+          </button>
+        ) : null}
+        <div className="space-y-2">
+          <Input
+            value={inviteCode}
+            onChange={(event) => setInviteCode(event.target.value)}
+            placeholder="초대 코드로 팀 합류"
+          />
+          <Button className="w-full" variant="secondary" disabled={joining || !inviteCode.trim()} onClick={joinTeam}>
+            {joining ? "합류 중" : "팀 합류"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

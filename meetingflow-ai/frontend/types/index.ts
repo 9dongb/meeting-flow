@@ -4,6 +4,16 @@ export type ActionStatus = "pending" | "in_progress" | "done";
 export interface User {
   id: number;
   email: string;
+  active_team_id?: number | null;
+  created_at: string;
+}
+
+export interface Team {
+  id: number;
+  name: string;
+  invite_code: string;
+  role: string;
+  member_count: number;
   created_at: string;
 }
 
@@ -61,6 +71,7 @@ export interface FollowUpEmailDraft {
 export interface Meeting {
   id: number;
   user_id: number;
+  team_id?: number | null;
   title: string;
   project_name?: string | null;
   meeting_date?: string | null;

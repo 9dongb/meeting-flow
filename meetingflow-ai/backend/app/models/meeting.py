@@ -11,6 +11,7 @@ class Meeting(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    team_id: Mapped[int | None] = mapped_column(ForeignKey("teams.id", ondelete="CASCADE"), index=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     project_name: Mapped[str | None] = mapped_column(String(255))
     meeting_date: Mapped[date | None] = mapped_column(Date)
@@ -27,6 +28,7 @@ class Meeting(Base):
     )
 
     user: Mapped["User"] = relationship(back_populates="meetings")
+    team: Mapped["Team | None"] = relationship(back_populates="meetings")
     participants: Mapped[list["Participant"]] = relationship(
         back_populates="meeting", cascade="all, delete-orphan"
     )

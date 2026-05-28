@@ -9,6 +9,7 @@ from app.crud.action_items import (
     update_action_item,
 )
 from app.crud.meetings import get_meeting
+from app.crud.teams import get_active_team
 from app.models.enums import ActionPriority, ActionStatus
 from app.schemas.action_item import ActionItemUpdate, ActionItemWithMeetingRead
 from app.schemas.meeting import ActionItemRead
@@ -25,9 +26,10 @@ def get_user_action_items(
     priority: ActionPriority | None = None,
     assignee: str | None = None,
 ) -> list[ActionItemWithMeetingRead]:
+    team = get_active_team(db, current_user)
     items = list_user_action_items(
         db,
-        current_user.id,
+        team.id,
         status=status,
         priority=priority,
         assignee=assignee,
@@ -56,7 +58,8 @@ def get_meeting_action_items(
     db: DbSession,
     current_user: CurrentUser,
 ) -> list[ActionItemRead]:
-    if not get_meeting(db, meeting_id, current_user.id):
+    team = get_active_team(db, current_user)
+    if not get_meeting(db, meeting_id, team.id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found")
     return list_action_items(db, meeting_id)
 
@@ -68,7 +71,8 @@ def patch_action_item(
     db: DbSession,
     current_user: CurrentUser,
 ) -> ActionItemRead:
-    item = get_action_item_for_user(db, action_item_id, current_user.id)
+    team = get_active_team(db, current_user)
+    item = get_action_item_for_user(db, action_item_id, team.id)
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Action item not found")
     return update_action_item(db, item, item_in)
@@ -76,7 +80,8 @@ def patch_action_item(
 
 @router.delete("/action-items/{action_item_id}", status_code=status.HTTP_204_NO_CONTENT)
 def remove_action_item(action_item_id: int, db: DbSession, current_user: CurrentUser) -> None:
-    item = get_action_item_for_user(db, action_item_id, current_user.id)
+    team = get_active_team(db, current_user)
+    item = get_action_item_for_user(db, action_item_id, team.id)
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Action item not found")
     delete_action_item(db, item)

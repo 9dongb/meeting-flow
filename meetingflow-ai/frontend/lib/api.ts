@@ -7,7 +7,8 @@ import type {
   Meeting,
   MeetingAnalysisResult,
   MeetingCreatePayload,
-  MockIntegrationResponse
+  MockIntegrationResponse,
+  Team
 } from "@/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
@@ -62,6 +63,21 @@ export const api = {
   },
   logout() {
     return request<void>("/auth/logout", { method: "POST" });
+  },
+  getCurrentTeam() {
+    return request<Team>("/teams/current");
+  },
+  updateCurrentTeam(name: string) {
+    return request<Team>("/teams/current", {
+      method: "PATCH",
+      body: JSON.stringify({ name })
+    });
+  },
+  joinTeam(inviteCode: string) {
+    return request<Team>("/teams/join", {
+      method: "POST",
+      body: JSON.stringify({ invite_code: inviteCode })
+    });
   },
   listMeetings() {
     return request<Meeting[]>("/meetings");

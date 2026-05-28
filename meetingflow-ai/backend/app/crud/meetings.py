@@ -6,20 +6,20 @@ from app.models.participant import Participant
 from app.schemas.meeting import MeetingCreate
 
 
-def list_meetings(db: Session, user_id: int) -> list[Meeting]:
+def list_meetings(db: Session, team_id: int) -> list[Meeting]:
     statement = (
         select(Meeting)
-        .where(Meeting.user_id == user_id)
+        .where(Meeting.team_id == team_id)
         .options(selectinload(Meeting.participants), selectinload(Meeting.action_items))
         .order_by(Meeting.created_at.desc())
     )
     return list(db.scalars(statement).all())
 
 
-def get_meeting(db: Session, meeting_id: int, user_id: int) -> Meeting | None:
+def get_meeting(db: Session, meeting_id: int, team_id: int) -> Meeting | None:
     statement = (
         select(Meeting)
-        .where(Meeting.id == meeting_id, Meeting.user_id == user_id)
+        .where(Meeting.id == meeting_id, Meeting.team_id == team_id)
         .options(
             selectinload(Meeting.participants),
             selectinload(Meeting.decisions),
@@ -31,9 +31,10 @@ def get_meeting(db: Session, meeting_id: int, user_id: int) -> Meeting | None:
     return db.scalar(statement)
 
 
-def create_meeting(db: Session, user_id: int, meeting_in: MeetingCreate) -> Meeting:
+def create_meeting(db: Session, user_id: int, team_id: int, meeting_in: MeetingCreate) -> Meeting:
     meeting = Meeting(
         user_id=user_id,
+        team_id=team_id,
         title=meeting_in.title,
         project_name=meeting_in.project_name,
         meeting_date=meeting_in.meeting_date,

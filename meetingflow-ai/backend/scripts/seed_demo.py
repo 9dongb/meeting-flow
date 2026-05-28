@@ -7,6 +7,8 @@ from sqlalchemy import select
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from app.core.security import get_password_hash
+from app.crud.teams import create_default_team_for_user, get_active_team
+from app.db.migrations import run_lightweight_migrations
 from app.db.session import Base, SessionLocal, engine
 from app.models.action_item import ActionItem
 from app.models.decision import Decision
@@ -24,6 +26,7 @@ DEMO_PASSWORD = "password123"
 
 def seed_demo_data() -> None:
     Base.metadata.create_all(bind=engine)
+    run_lightweight_migrations(engine)
     db = SessionLocal()
     try:
         user = db.scalar(select(User).where(User.email == DEMO_EMAIL))
@@ -31,9 +34,12 @@ def seed_demo_data() -> None:
             user = User(email=DEMO_EMAIL, hashed_password=get_password_hash(DEMO_PASSWORD))
             db.add(user)
             db.flush()
+            team = create_default_team_for_user(db, user)
+        else:
+            team = get_active_team(db, user)
 
         demo_titles = ["제품 주간 싱크", "엔터프라이즈 고객 온보딩", "런칭 체크리스트 리뷰"]
-        existing = db.scalars(select(Meeting).where(Meeting.user_id == user.id, Meeting.title.in_(demo_titles))).all()
+        existing = db.scalars(select(Meeting).where(Meeting.team_id == team.id, Meeting.title.in_(demo_titles))).all()
         for meeting in existing:
             db.delete(meeting)
         db.flush()
@@ -42,6 +48,7 @@ def seed_demo_data() -> None:
         meetings = [
             Meeting(
                 user_id=user.id,
+                team_id=team.id,
                 title="제품 주간 싱크",
                 meeting_date=today - timedelta(days=2),
                 transcript=(
@@ -96,6 +103,7 @@ def seed_demo_data() -> None:
             ),
             Meeting(
                 user_id=user.id,
+                team_id=team.id,
                 title="엔터프라이즈 고객 온보딩",
                 meeting_date=today - timedelta(days=1),
                 transcript=(
@@ -142,6 +150,7 @@ def seed_demo_data() -> None:
             ),
             Meeting(
                 user_id=user.id,
+                team_id=team.id,
                 title="런칭 체크리스트 리뷰",
                 meeting_date=today,
                 transcript=(

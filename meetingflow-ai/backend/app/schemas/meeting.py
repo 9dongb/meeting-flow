@@ -95,6 +95,7 @@ class MeetingCreate(BaseModel):
 class MeetingRead(BaseModel):
     id: int
     user_id: int
+    team_id: int | None = None
     title: str
     project_name: str | None = None
     meeting_date: date | None = None

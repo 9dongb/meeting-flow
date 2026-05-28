@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, status
 
 from app.api.deps import CurrentUser, DbSession
 from app.crud.meetings import get_meeting
+from app.crud.teams import get_active_team
 from app.models.enums import IntegrationType
 from app.schemas.integration import MarkdownExportResponse, MockIntegrationResponse
 from app.services.integrations.calendar import MockGoogleCalendarService
@@ -14,7 +15,8 @@ router = APIRouter(prefix="/meetings/{meeting_id}", tags=["export-integrations"]
 
 
 def _get_owned_meeting(meeting_id: int, db: DbSession, current_user: CurrentUser):
-    meeting = get_meeting(db, meeting_id, current_user.id)
+    team = get_active_team(db, current_user)
+    meeting = get_meeting(db, meeting_id, team.id)
     if not meeting:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found")
     return meeting

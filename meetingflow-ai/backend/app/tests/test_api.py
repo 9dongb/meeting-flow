@@ -111,6 +111,29 @@ def test_users_cannot_access_each_others_data(client: TestClient) -> None:
     assert client.get(f"/meetings/{owner_meeting_id}/action-items").status_code == 404
 
 
+def test_users_in_same_team_share_meetings_and_action_board(client: TestClient) -> None:
+    register(client, email="owner@example.com")
+    owner_team = client.get("/teams/current").json()
+    owner_meeting_id = create_meeting(client, title="Shared Team Meeting")
+    client.post(f"/meetings/{owner_meeting_id}/analyze")
+    client.post("/auth/logout")
+
+    register(client, email="teammate@example.com")
+    assert client.get("/meetings").json() == []
+
+    join_response = client.post("/teams/join", json={"invite_code": owner_team["invite_code"]})
+    assert join_response.status_code == 200
+    assert join_response.json()["id"] == owner_team["id"]
+
+    meetings_response = client.get("/meetings")
+    assert meetings_response.status_code == 200
+    assert meetings_response.json()[0]["title"] == "Shared Team Meeting"
+
+    board_response = client.get("/action-items")
+    assert board_response.status_code == 200
+    assert len(board_response.json()) >= 1
+
+
 def test_validation_errors(client: TestClient) -> None:
     assert client.post("/auth/register", json={"email": "bad-email", "password": "password123"}).status_code == 422
     assert client.post("/auth/register", json={"email": "short@example.com", "password": "short"}).status_code == 422

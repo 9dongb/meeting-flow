@@ -2,6 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.security import get_password_hash, verify_password
+from app.crud.teams import create_default_team_for_user
 from app.models.user import User
 from app.schemas.user import UserCreate
 
@@ -13,8 +14,8 @@ def get_user_by_email(db: Session, email: str) -> User | None:
 def create_user(db: Session, user_in: UserCreate) -> User:
     user = User(email=user_in.email.lower(), hashed_password=get_password_hash(user_in.password))
     db.add(user)
-    db.commit()
-    db.refresh(user)
+    db.flush()
+    create_default_team_for_user(db, user)
     return user
 
 
