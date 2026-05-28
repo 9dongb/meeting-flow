@@ -90,6 +90,9 @@ export const api = {
       body: JSON.stringify(payload)
     });
   },
+  syncGoogleCalendarNow() {
+    return request<GoogleCalendarStatus>("/integrations/google-calendar/sync", { method: "POST" });
+  },
   listMeetings() {
     return request<Meeting[]>("/meetings");
   },

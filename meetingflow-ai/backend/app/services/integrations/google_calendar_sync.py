@@ -21,55 +21,74 @@ class GoogleCalendarSyncError(Exception):
 
 
 class GoogleCalendarSyncService:
-    def sync_action_item(self, db: Session, user_id: int, item: ActionItem) -> None:
+    def sync_action_item(self, db: Session, user_id: int, item: ActionItem) -> ActionItemCalendarLink | None:
         account = get_google_account_for_user(db, user_id)
         if not account or not account.calendar_sync_enabled:
-            return
+            return None
         if not item.due_date:
-            self.delete_action_item_event(db, user_id, item)
-            return
-
-        token = self._access_token(db, account)
-        link = self._get_link(db, user_id, item.id)
-        payload = self._event_payload(item)
-        if link:
-            self._request(
-                "PATCH",
-                f"{GOOGLE_CALENDAR_API}/calendars/{link.calendar_id}/events/{link.google_event_id}",
-                token,
-                json=payload,
-            )
-            link.sync_status = "synced"
-            link.last_error = None
-            link.last_synced_at = datetime.now(UTC)
-        else:
-            response = self._request(
-                "POST",
-                f"{GOOGLE_CALENDAR_API}/calendars/{account.calendar_id}/events",
-                token,
-                json=payload,
-            )
-            link = ActionItemCalendarLink(
-                action_item_id=item.id,
+            return self._mark_link(
+                db,
                 user_id=user_id,
-                google_event_id=response["id"],
+                action_item_id=item.id,
                 calendar_id=account.calendar_id,
-                sync_status="synced",
-                last_synced_at=datetime.now(UTC),
+                status="skipped_no_due_date",
+                error="마감일이 없어 Google Calendar 이벤트를 만들지 않았습니다.",
             )
-        db.add(link)
-        db.commit()
 
-    def sync_meeting_action_items(self, db: Session, user_id: int, meeting: Meeting) -> None:
+        link = self._get_link(db, user_id, item.id)
+        try:
+            token = self._access_token(db, account)
+            payload = self._event_payload(item)
+            if link and link.google_event_id:
+                self._request(
+                    "PATCH",
+                    f"{GOOGLE_CALENDAR_API}/calendars/{link.calendar_id}/events/{link.google_event_id}",
+                    token,
+                    json=payload,
+                )
+                link.sync_status = "synced"
+                link.last_error = None
+                link.last_synced_at = datetime.now(UTC)
+            else:
+                response = self._request(
+                    "POST",
+                    f"{GOOGLE_CALENDAR_API}/calendars/{account.calendar_id}/events",
+                    token,
+                    json=payload,
+                )
+                link = link or ActionItemCalendarLink(action_item_id=item.id, user_id=user_id)
+                link.google_event_id = response["id"]
+                link.calendar_id = account.calendar_id
+                link.sync_status = "synced"
+                link.last_error = None
+                link.last_synced_at = datetime.now(UTC)
+            db.add(link)
+            db.commit()
+            return link
+        except Exception as exc:
+            return self._mark_link(
+                db,
+                user_id=user_id,
+                action_item_id=item.id,
+                calendar_id=account.calendar_id,
+                status="failed",
+                error=str(exc)[:1000],
+            )
+
+    def sync_meeting_action_items(self, db: Session, user_id: int, meeting: Meeting) -> list[ActionItemCalendarLink]:
+        links = []
         for item in meeting.action_items:
-            self.sync_action_item(db, user_id, item)
+            link = self.sync_action_item(db, user_id, item)
+            if link:
+                links.append(link)
+        return links
 
     def delete_action_item_event(self, db: Session, user_id: int, item: ActionItem) -> None:
         account = get_google_account_for_user(db, user_id)
         link = self._get_link(db, user_id, item.id)
         if not account or not link:
             return
-        if account.calendar_sync_enabled:
+        if account.calendar_sync_enabled and link.google_event_id:
             token = self._access_token(db, account)
             self._request(
                 "DELETE",
@@ -153,3 +172,28 @@ class GoogleCalendarSyncService:
                 ActionItemCalendarLink.action_item_id == action_item_id,
             )
         )
+
+    def _mark_link(
+        self,
+        db: Session,
+        *,
+        user_id: int,
+        action_item_id: int,
+        calendar_id: str,
+        status: str,
+        error: str | None = None,
+    ) -> ActionItemCalendarLink:
+        link = self._get_link(db, user_id, action_item_id)
+        if not link:
+            link = ActionItemCalendarLink(
+                action_item_id=action_item_id,
+                user_id=user_id,
+                calendar_id=calendar_id,
+            )
+        link.sync_status = status
+        link.last_error = error
+        link.last_synced_at = datetime.now(UTC)
+        db.add(link)
+        db.commit()
+        db.refresh(link)
+        return link

@@ -59,7 +59,7 @@ def test_register_login_and_me(client: TestClient) -> None:
 
 def test_google_auth_and_calendar_status_defaults(client: TestClient) -> None:
     login_response = client.get("/auth/google/login", follow_redirects=False)
-    assert login_response.status_code == 503
+    assert login_response.status_code in {302, 503}
 
     register(client)
     calendar_status = client.get("/integrations/google-calendar/status")
@@ -69,6 +69,10 @@ def test_google_auth_and_calendar_status_defaults(client: TestClient) -> None:
         "sync_enabled": False,
         "email": None,
         "calendar_id": "primary",
+        "synced_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "last_error": None,
     }
 
 

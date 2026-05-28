@@ -48,6 +48,8 @@ def get_user_action_items(
             status=item.status,
             confidence=item.confidence,
             source_text=item.source_text,
+            calendar_sync_status=_calendar_status(item, current_user.id)[0],
+            calendar_sync_error=_calendar_status(item, current_user.id)[1],
         )
         for item in items
     ]
@@ -62,7 +64,7 @@ def get_meeting_action_items(
     team = get_active_team(db, current_user)
     if not get_meeting(db, meeting_id, team.id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found")
-    return list_action_items(db, meeting_id)
+    return [_to_action_item_read(item, current_user.id) for item in list_action_items(db, meeting_id)]
 
 
 @router.patch("/action-items/{action_item_id}", response_model=ActionItemRead)
@@ -81,7 +83,7 @@ def patch_action_item(
         GoogleCalendarSyncService().sync_action_item(db, current_user.id, updated)
     except GoogleCalendarSyncError:
         pass
-    return updated
+    return _to_action_item_read(updated, current_user.id)
 
 
 @router.delete("/action-items/{action_item_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -95,3 +97,27 @@ def remove_action_item(action_item_id: int, db: DbSession, current_user: Current
     except GoogleCalendarSyncError:
         pass
     delete_action_item(db, item)
+
+
+def _calendar_status(item, user_id: int) -> tuple[str | None, str | None]:
+    link = next((candidate for candidate in item.calendar_links if candidate.user_id == user_id), None)
+    if not link:
+        return None, None
+    return link.sync_status, link.last_error
+
+
+def _to_action_item_read(item, user_id: int) -> ActionItemRead:
+    sync_status, sync_error = _calendar_status(item, user_id)
+    return ActionItemRead(
+        id=item.id,
+        meeting_id=item.meeting_id,
+        assignee=item.assignee,
+        description=item.description,
+        due_date=item.due_date,
+        priority=item.priority,
+        status=item.status,
+        confidence=item.confidence,
+        source_text=item.source_text,
+        calendar_sync_status=sync_status,
+        calendar_sync_error=sync_error,
+    )

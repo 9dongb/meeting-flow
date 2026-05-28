@@ -17,6 +17,8 @@ class ActionItemWithMeetingRead(BaseModel):
     status: ActionStatus
     confidence: float
     source_text: str | None = None
+    calendar_sync_status: str | None = None
+    calendar_sync_error: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

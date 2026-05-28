@@ -20,6 +20,45 @@ def run_lightweight_migrations(engine: Engine) -> None:
         BaseTableCheck = inspector.get_table_names()
         if "user_google_accounts" not in BaseTableCheck or "action_item_calendar_links" not in BaseTableCheck:
             return
+        calendar_link_columns = {
+            column["name"]: column for column in inspector.get_columns("action_item_calendar_links")
+        }
+        if calendar_link_columns.get("google_event_id", {}).get("nullable") is False:
+            connection.execute(text("ALTER TABLE action_item_calendar_links RENAME TO action_item_calendar_links_old"))
+            connection.execute(
+                text(
+                    """
+                    CREATE TABLE action_item_calendar_links (
+                        id INTEGER NOT NULL,
+                        action_item_id INTEGER NOT NULL,
+                        user_id INTEGER NOT NULL,
+                        google_event_id VARCHAR(255),
+                        calendar_id VARCHAR(255) NOT NULL,
+                        sync_status VARCHAR(32) NOT NULL,
+                        last_error TEXT,
+                        last_synced_at DATETIME,
+                        created_at DATETIME NOT NULL,
+                        PRIMARY KEY (id),
+                        FOREIGN KEY(action_item_id) REFERENCES action_items (id) ON DELETE CASCADE,
+                        FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE
+                    )
+                    """
+                )
+            )
+            connection.execute(
+                text(
+                    """
+                    INSERT INTO action_item_calendar_links (
+                        id, action_item_id, user_id, google_event_id, calendar_id, sync_status,
+                        last_error, last_synced_at, created_at
+                    )
+                    SELECT id, action_item_id, user_id, google_event_id, calendar_id, sync_status,
+                           last_error, last_synced_at, created_at
+                    FROM action_item_calendar_links_old
+                    """
+                )
+            )
+            connection.execute(text("DROP TABLE action_item_calendar_links_old"))
 
         users = connection.execute(text("SELECT id, email, active_team_id FROM users")).mappings().all()
         for user in users:

@@ -72,8 +72,9 @@ def analyze_meeting(meeting_id: int, db: DbSession, current_user: CurrentUser) -
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found")
     try:
         result = analyze_and_persist_meeting(db, meeting)
-        db.refresh(meeting)
-        GoogleCalendarSyncService().sync_meeting_action_items(db, current_user.id, meeting)
+        refreshed_meeting = get_meeting(db, meeting_id, team.id)
+        if refreshed_meeting:
+            GoogleCalendarSyncService().sync_meeting_action_items(db, current_user.id, refreshed_meeting)
         return result
     except MeetingAnalysisUnavailableError as exc:
         raise HTTPException(

@@ -2,14 +2,16 @@ import secrets
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
+from sqlalchemy import func, select
 
 from app.api.deps import CurrentUser, DbSession
 from app.core.config import get_settings
 from app.crud.google_accounts import get_google_account_for_user, update_calendar_settings, upsert_google_account
 from app.crud.action_items import list_user_action_items
 from app.crud.teams import get_active_team
+from app.models.action_item_calendar_link import ActionItemCalendarLink
 from app.schemas.google_integration import GoogleCalendarSettingsUpdate, GoogleCalendarStatus
-from app.services.integrations.google_calendar_sync import GoogleCalendarSyncError, GoogleCalendarSyncService
+from app.services.integrations.google_calendar_sync import GoogleCalendarSyncService
 from app.services.google_oauth import CALENDAR_SCOPES, GoogleOAuthError, build_google_auth_url, exchange_code_for_tokens, fetch_google_userinfo
 
 
@@ -22,12 +24,7 @@ def google_calendar_status(db: DbSession, current_user: CurrentUser) -> GoogleCa
     account = get_google_account_for_user(db, current_user.id)
     if not account:
         return GoogleCalendarStatus(connected=False, sync_enabled=False)
-    return GoogleCalendarStatus(
-        connected=bool(account.refresh_token_encrypted),
-        sync_enabled=account.calendar_sync_enabled,
-        email=account.email,
-        calendar_id=account.calendar_id,
-    )
+    return _calendar_status(db, current_user.id, account)
 
 
 @router.get("/connect")
@@ -86,6 +83,7 @@ def google_calendar_callback(
         expires_in=tokens.get("expires_in"),
     )
     update_calendar_settings(db, account, enabled=True)
+    _sync_current_team_items(db, current_user.id)
 
     redirect = RedirectResponse(f"{settings.frontend_base_url}/dashboard", status_code=status.HTTP_302_FOUND)
     redirect.delete_cookie(
@@ -115,15 +113,51 @@ def update_google_calendar_settings(
         calendar_id=settings_in.calendar_id,
     )
     if settings_in.sync_enabled and not was_enabled:
-        try:
-            team = get_active_team(db, current_user)
-            for item in list_user_action_items(db, team.id):
-                GoogleCalendarSyncService().sync_action_item(db, current_user.id, item)
-        except GoogleCalendarSyncError as exc:
-            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+        _sync_current_team_items(db, current_user.id)
+    return _calendar_status(db, current_user.id, account)
+
+
+@router.post("/sync", response_model=GoogleCalendarStatus)
+def sync_google_calendar_now(db: DbSession, current_user: CurrentUser) -> GoogleCalendarStatus:
+    account = get_google_account_for_user(db, current_user.id)
+    if not account:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Google Calendar is not connected")
+    if not account.calendar_sync_enabled:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Google Calendar sync is off")
+    _sync_current_team_items(db, current_user.id)
+    return _calendar_status(db, current_user.id, account)
+
+
+def _sync_current_team_items(db: DbSession, user_id: int) -> None:
+    from app.models.user import User
+
+    user = db.get(User, user_id)
+    if not user:
+        return
+    team = get_active_team(db, user)
+    for item in list_user_action_items(db, team.id):
+        GoogleCalendarSyncService().sync_action_item(db, user_id, item)
+
+
+def _calendar_status(db: DbSession, user_id: int, account) -> GoogleCalendarStatus:
+    rows = db.execute(
+        select(ActionItemCalendarLink.sync_status, func.count())
+        .where(ActionItemCalendarLink.user_id == user_id)
+        .group_by(ActionItemCalendarLink.sync_status)
+    ).all()
+    counts = {status: int(count) for status, count in rows}
+    last_failed = db.scalar(
+        select(ActionItemCalendarLink)
+        .where(ActionItemCalendarLink.user_id == user_id, ActionItemCalendarLink.sync_status == "failed")
+        .order_by(ActionItemCalendarLink.last_synced_at.desc().nullslast(), ActionItemCalendarLink.id.desc())
+    )
     return GoogleCalendarStatus(
         connected=bool(account.refresh_token_encrypted),
         sync_enabled=account.calendar_sync_enabled,
         email=account.email,
         calendar_id=account.calendar_id,
+        synced_count=counts.get("synced", 0),
+        failed_count=counts.get("failed", 0),
+        skipped_count=counts.get("skipped_no_due_date", 0),
+        last_error=last_failed.last_error if last_failed else None,
     )

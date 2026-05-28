@@ -299,6 +299,25 @@ function CalendarPanel({
     }
   }
 
+  async function syncNow() {
+    setUpdating(true);
+    onMessage("");
+    onError("");
+    try {
+      const updated = await api.syncGoogleCalendarNow();
+      onStatusChange(updated);
+      if (updated.failed_count > 0) {
+        onError(`Calendar 동기화 실패 ${updated.failed_count}건이 있습니다. ${updated.last_error ?? ""}`.trim());
+      } else {
+        onMessage("Google Calendar 재동기화를 완료했습니다.");
+      }
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Google Calendar 재동기화에 실패했습니다.");
+    } finally {
+      setUpdating(false);
+    }
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -316,9 +335,31 @@ function CalendarPanel({
             {status?.connected ? `${status.email} · ${status.calendar_id}` : "액션 아이템 마감일을 개인 캘린더에 등록합니다."}
           </p>
         </div>
+        {status?.connected ? (
+          <div className="grid grid-cols-3 gap-2 text-center text-xs">
+            <div className="rounded-md bg-emerald-50 px-2 py-2 text-emerald-700">
+              <p className="font-semibold">{status.synced_count}</p>
+              <p>완료</p>
+            </div>
+            <div className="rounded-md bg-red-50 px-2 py-2 text-red-700">
+              <p className="font-semibold">{status.failed_count}</p>
+              <p>실패</p>
+            </div>
+            <div className="rounded-md bg-slate-50 px-2 py-2 text-slate-600">
+              <p className="font-semibold">{status.skipped_count}</p>
+              <p>제외</p>
+            </div>
+          </div>
+        ) : null}
+        {status?.last_error ? <p className="line-clamp-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{status.last_error}</p> : null}
         <Button className="w-full" variant={status?.sync_enabled ? "secondary" : "default"} disabled={updating} onClick={toggleSync}>
           {status?.connected ? (status.sync_enabled ? "동기화 끄기" : "동기화 켜기") : "Calendar 연결"}
         </Button>
+        {status?.connected && status.sync_enabled ? (
+          <Button className="w-full" variant="secondary" disabled={updating} onClick={syncNow}>
+            지금 재동기화
+          </Button>
+        ) : null}
       </CardContent>
     </Card>
   );

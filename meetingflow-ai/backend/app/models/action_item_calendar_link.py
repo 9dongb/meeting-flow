@@ -12,7 +12,7 @@ class ActionItemCalendarLink(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     action_item_id: Mapped[int] = mapped_column(ForeignKey("action_items.id", ondelete="CASCADE"), index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    google_event_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    google_event_id: Mapped[str | None] = mapped_column(String(255))
     calendar_id: Mapped[str] = mapped_column(String(255), default="primary", nullable=False)
     sync_status: Mapped[str] = mapped_column(String(32), default="synced", nullable=False)
     last_error: Mapped[str | None] = mapped_column(Text)

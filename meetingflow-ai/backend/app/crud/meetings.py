@@ -1,6 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from app.models.action_item import ActionItem
 from app.models.meeting import Meeting
 from app.models.participant import Participant
 from app.schemas.meeting import MeetingCreate, MeetingUpdate
@@ -23,7 +24,7 @@ def get_meeting(db: Session, meeting_id: int, team_id: int) -> Meeting | None:
         .options(
             selectinload(Meeting.participants),
             selectinload(Meeting.decisions),
-            selectinload(Meeting.action_items),
+            selectinload(Meeting.action_items).selectinload(ActionItem.calendar_links),
             selectinload(Meeting.unresolved_issues),
             selectinload(Meeting.follow_up_email_drafts),
         )

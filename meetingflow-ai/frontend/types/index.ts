@@ -22,6 +22,10 @@ export interface GoogleCalendarStatus {
   sync_enabled: boolean;
   email?: string | null;
   calendar_id: string;
+  synced_count: number;
+  failed_count: number;
+  skipped_count: number;
+  last_error?: string | null;
 }
 
 export interface AuthResponse {
@@ -52,6 +56,8 @@ export interface ActionItem {
   status: ActionStatus;
   confidence: number;
   source_text?: string | null;
+  calendar_sync_status?: string | null;
+  calendar_sync_error?: string | null;
 }
 
 export interface ActionItemWithMeeting extends ActionItem {
