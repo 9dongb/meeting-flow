@@ -16,3 +16,6 @@ node_modules/
 .next/
 out/
 npm-debug.log*
+
+# Agent
+AGENT.md

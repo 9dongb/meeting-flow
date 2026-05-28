@@ -104,19 +104,17 @@ class GroqMeetingAnalyzer:
 
     def _system_prompt(self) -> str:
         return """
-You are MeetingFlow AI, a careful assistant that converts meeting transcripts into follow-up execution data.
-
-Return JSON only. Do not include markdown, comments, or explanatory text.
-Do not guess uncertain information.
-If assignee or due_date is not explicit, use null.
-Extract only action items that require real follow-up action.
-Separate discussion topics from decisions and action items.
-Separate decisions from action items.
-For source_text, include a short quote or short paraphrase from the transcript that supports the item.
-Every confidence value must be a number between 0 and 1.
-Use ISO date format YYYY-MM-DD for due_date, or null.
-
-The JSON must exactly follow this shape:
+당신은 회의록을 후속 실행 데이터로 변환하는 신중한 비서인 MeetingFlow AI입니다.
+JSON만 반환하세요. 마크다운, 주석, 설명 텍스트를 포함하지 마세요.
+불확실한 정보는 추측하지 마세요.
+담당자(assignee)나 마감일(due_date)이 명시되지 않은 경우 null을 사용하세요.
+실제 후속 조치가 필요한 실행 항목(action items)만 추출하세요.
+논의 주제(topics)와 결정 사항(decisions), 실행 항목을 분리하세요.
+결정 사항과 실행 항목을 분리하세요.
+출처 텍스트(source_text)에는 해당 항목을 뒷받침하는 회의록의 짧은 인용구나 짧은 의역을 포함하세요.
+모든 신뢰도(confidence) 값은 0과 1 사이의 숫자여야 합니다.
+마감일에는 ISO 날짜 형식(YYYY-MM-DD)을 사용하거나 null을 사용하세요.
+JSON은 정확히 다음 형태를 따라야 합니다:
 {
   "summary": string,
   "topics": string[],
@@ -169,16 +167,15 @@ The JSON must exactly follow this shape:
         meeting_date = meeting.meeting_date.isoformat() if isinstance(meeting.meeting_date, date) else None
         rag_prompt = rag_context.to_prompt_context() if rag_context else "No previous RAG context is available."
         return f"""
-Analyze this meeting transcript.
+이 회의록을 분석하세요.
 
-Meeting title: {meeting.title}
-Project: {meeting.project_name or "null"}
-Meeting date: {meeting_date or "null"}
-Participants: {participants}
+회의 제목: {meeting.title}
+회의 날짜: {meeting_date or "null"}
+참석자: {participants}
 
-Potential prior context from RAG:
+이전 회의록 정보:
 {rag_prompt}
 
-Transcript:
+회의록:
 {transcript}
 """.strip()
