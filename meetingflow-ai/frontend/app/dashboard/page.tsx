@@ -312,7 +312,7 @@ function AvatarStack({ members, totalCount }: { members: TeamMember[]; totalCoun
         ) : null}
       </div>
       {selectedMember ? (
-        <div className="absolute left-0 top-11 z-30 w-64 rounded-md border border-border bg-white p-3 text-sm shadow-lg">
+        <div className="absolute bottom-12 left-0 z-50 w-64 rounded-md border border-border bg-white p-3 text-sm shadow-lg">
           <div className="flex items-start gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-semibold text-white">
               {getInitial(selectedMember.name)}
