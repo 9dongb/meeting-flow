@@ -1,12 +1,12 @@
 "use client";
 
-import { FileText } from "lucide-react";
-import Link from "next/link";
+import { Eye } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { IntegrationActions } from "@/components/meetings/integration-actions";
+import { ParticipantsPopover, TranscriptModal } from "@/components/meetings/meeting-detail-overlays";
 import { MeetingActionsMenu } from "@/components/meetings/meeting-actions-menu";
 import { MeetingEditForm } from "@/components/meetings/meeting-edit-form";
 import { PriorityBadge, StatusBadge } from "@/components/meetings/status-badge";
@@ -27,6 +27,7 @@ export default function MeetingDetailPage() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showTranscriptModal, setShowTranscriptModal] = useState(false);
 
   useEffect(() => {
     if (!meetingId) return;
@@ -82,14 +83,17 @@ export default function MeetingDetailPage() {
             <div>
               <p className="text-sm font-medium text-slate-500">{meeting.project_name || "프로젝트 미지정"}</p>
               <h1 className="mt-1 text-3xl font-semibold tracking-normal">{meeting.title}</h1>
-              <p className="mt-3 text-sm text-slate-500">
-                {formatDate(meeting.meeting_date)} · 참석자 {meeting.participants.length}명
-              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-2 text-sm text-slate-500">
+                <span>{formatDate(meeting.meeting_date)}</span>
+                <span aria-hidden="true">·</span>
+                <ParticipantsPopover participants={meeting.participants} />
+              </div>
             </div>
             <div className="flex items-center gap-2">
-              <Link href={`/meetings/${meeting.id}/actions`}>
-                <Button variant="secondary">액션 아이템 검토</Button>
-              </Link>
+              <Button onClick={() => setShowTranscriptModal(true)}>
+                <Eye className="h-4 w-4" />
+                원문 보기
+              </Button>
               <MeetingActionsMenu onEdit={() => setEditing(true)} onDelete={() => void deleteMeeting()} disabled={saving} />
             </div>
           </div>
@@ -109,18 +113,6 @@ export default function MeetingDetailPage() {
               </CardContent>
             </Card>
           ) : null}
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                회의 원문
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="whitespace-pre-wrap leading-7 text-slate-700">{meeting.transcript || "원문이 없습니다."}</p>
-            </CardContent>
-          </Card>
 
           <section className="grid gap-6 lg:grid-cols-[1fr_1fr]">
             <Card>
@@ -176,6 +168,10 @@ export default function MeetingDetailPage() {
           </Card>
 
           <IntegrationActions meetingId={meeting.id} />
+
+          {showTranscriptModal ? (
+            <TranscriptModal transcript={meeting.transcript} onClose={() => setShowTranscriptModal(false)} />
+          ) : null}
         </div>
       )}
     </AppShell>

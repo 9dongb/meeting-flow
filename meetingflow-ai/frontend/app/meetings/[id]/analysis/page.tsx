@@ -1,14 +1,13 @@
 "use client";
 
-import { Eye, ListChecks } from "lucide-react";
-import Link from "next/link";
+import { Eye } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { AnalysisResult } from "@/components/meetings/analysis-result";
+import { ParticipantsPopover, TranscriptModal } from "@/components/meetings/meeting-detail-overlays";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState, Feedback, LoadingState } from "@/components/ui/feedback";
 import { api } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
@@ -19,7 +18,7 @@ export default function MeetingAnalysisPage() {
   const meetingId = Number(params.id);
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [storedAnalysis, setStoredAnalysis] = useState<MeetingAnalysisResult | null>(null);
-  const [showTranscript, setShowTranscript] = useState(false);
+  const [showTranscriptModal, setShowTranscriptModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -62,36 +61,25 @@ export default function MeetingAnalysisPage() {
             <div>
               <p className="text-sm font-medium text-slate-500">Analysis Result</p>
               <h1 className="mt-1 text-3xl font-semibold tracking-normal">{meeting.title}</h1>
-              <p className="mt-3 text-sm text-slate-500">
-                {formatDate(meeting.meeting_date)} · 참석자 {meeting.participants.length}명
-              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-2 text-sm text-slate-500">
+                <span>{formatDate(meeting.meeting_date)}</span>
+                <span aria-hidden="true">·</span>
+                <ParticipantsPopover participants={meeting.participants} />
+              </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button variant="secondary" onClick={() => setShowTranscript((current) => !current)}>
+              <Button onClick={() => setShowTranscriptModal(true)}>
                 <Eye className="h-4 w-4" />
-                원문 {showTranscript ? "닫기" : "보기"}
+                원문 보기
               </Button>
-              <Link href={`/meetings/${meeting.id}/actions`}>
-                <Button>
-                  <ListChecks className="h-4 w-4" />
-                  액션 아이템 검토
-                </Button>
-              </Link>
             </div>
           </div>
 
-          {showTranscript ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>회의 원문</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="whitespace-pre-wrap leading-7 text-slate-700">{meeting.transcript || "원문이 없습니다."}</p>
-              </CardContent>
-            </Card>
-          ) : null}
-
           <AnalysisResult result={result} />
+
+          {showTranscriptModal ? (
+            <TranscriptModal transcript={meeting.transcript} onClose={() => setShowTranscriptModal(false)} />
+          ) : null}
         </div>
       )}
     </AppShell>

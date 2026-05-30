@@ -155,6 +155,8 @@ def test_users_in_same_team_share_meetings_and_action_board(client: TestClient) 
     join_response = client.post("/teams/join", json={"invite_code": owner_team["invite_code"]})
     assert join_response.status_code == 200
     assert join_response.json()["id"] == owner_team["id"]
+    assert join_response.json()["member_count"] == 2
+    assert {member["email"] for member in join_response.json()["members"]} == {"owner@example.com", "teammate@example.com"}
 
     meetings_response = client.get("/meetings")
     assert meetings_response.status_code == 200

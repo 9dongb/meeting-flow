@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException, status
 
 from app.api.deps import CurrentUser, DbSession
-from app.crud.teams import count_team_members, get_active_team, get_team_role, join_team_by_invite_code, update_team_name
+from app.crud.teams import count_team_members, get_active_team, get_team_role, join_team_by_invite_code, list_team_members, update_team_name
 from app.models.team import Team
-from app.schemas.team import TeamJoinRequest, TeamRead, TeamUpdate
+from app.schemas.team import TeamJoinRequest, TeamMemberRead, TeamRead, TeamUpdate
 
 
 router = APIRouter(prefix="/teams", tags=["teams"])
@@ -40,5 +40,15 @@ def to_team_read(db: DbSession, team_id: int, user_id: int) -> TeamRead:
         invite_code=team.invite_code,
         role=get_team_role(db, team.id, user_id),
         member_count=count_team_members(db, team.id),
+        members=[
+            TeamMemberRead(
+                id=user.id,
+                name=user.email.split("@", maxsplit=1)[0],
+                email=user.email,
+                role=membership.role,
+                joined_at=membership.created_at,
+            )
+            for membership, user in list_team_members(db, team.id)
+        ],
         created_at=team.created_at,
     )

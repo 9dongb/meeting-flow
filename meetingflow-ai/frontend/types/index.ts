@@ -14,7 +14,16 @@ export interface Team {
   invite_code: string;
   role: string;
   member_count: number;
+  members: TeamMember[];
   created_at: string;
+}
+
+export interface TeamMember {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  joined_at: string;
 }
 
 export interface GoogleCalendarStatus {

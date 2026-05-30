@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, CalendarClock, CheckCircle2, Copy, FileText, PlusCircle, Users } from "lucide-react";
+import { AlertTriangle, CalendarClock, CheckCircle2, Copy, FileText, Users } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -9,16 +9,22 @@ import { AppShell } from "@/components/layout/app-shell";
 import { ActionKanbanBoard } from "@/components/meetings/action-kanban";
 import { MeetingActionsMenu } from "@/components/meetings/meeting-actions-menu";
 import { MeetingEditForm } from "@/components/meetings/meeting-edit-form";
-import { StatusBadge } from "@/components/meetings/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState, Feedback, LoadingState } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
-import type { ActionItemWithMeeting, ActionStatus, GoogleCalendarStatus, Meeting, MeetingUpdatePayload, Team } from "@/types";
+import type { ActionItemWithMeeting, ActionStatus, GoogleCalendarStatus, Meeting, MeetingUpdatePayload, Team, TeamMember } from "@/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+const MAX_VISIBLE_COLLABORATORS = 4;
+const avatarStyles = [
+  "bg-blue-600 text-white",
+  "bg-emerald-600 text-white",
+  "bg-amber-500 text-white",
+  "bg-rose-600 text-white"
+];
 
 export default function DashboardPage() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
@@ -133,30 +139,32 @@ export default function DashboardPage() {
 
   return (
     <AppShell>
-      <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+      <div className="mb-8">
         <div>
           <p className="text-sm font-medium text-slate-500">{team ? team.name : "Dashboard"}</p>
           <h1 className="ai-gradient-text mt-1 text-2xl font-semibold tracking-normal">회의 후속 업무 보드</h1>
         </div>
-        <Link href="/meetings/new">
-          <Button>
-            <PlusCircle className="h-4 w-4" />새 회의록 생성
-          </Button>
-        </Link>
       </div>
 
       {error ? <Feedback variant="error" className="mb-5">{error}</Feedback> : null}
       {message ? <Feedback variant="success" className="mb-5">{message}</Feedback> : null}
 
-      <section className="grid gap-4 md:grid-cols-4">
-        <Metric title="최근 회의" value={meetings.length} icon={<FileText className="h-4 w-4" />} />
-        <Metric title="미완료 액션" value={activeCount} icon={<CalendarClock className="h-4 w-4" />} />
-        <Metric title="높은 우선순위" value={highPriorityCount} icon={<AlertTriangle className="h-4 w-4" />} />
-        <Metric title="완료" value={doneCount} icon={<CheckCircle2 className="h-4 w-4" />} />
-      </section>
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px] 2xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0">
+          <section className="grid gap-4 md:grid-cols-4">
+            <Metric title="최근 회의" value={meetings.length} icon={<FileText className="h-4 w-4" />} />
+            <Metric title="미완료 액션" value={activeCount} icon={<CalendarClock className="h-4 w-4" />} />
+            <Metric title="높은 우선순위" value={highPriorityCount} icon={<AlertTriangle className="h-4 w-4" />} />
+            <Metric title="완료" value={doneCount} icon={<CheckCircle2 className="h-4 w-4" />} />
+          </section>
 
-      <section className="mt-6 grid gap-6 2xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div>
+          <div className="mt-6">
+            <BoardContextBar
+              team={team}
+              dueSoon={dueSoon}
+              activeCount={activeCount}
+            />
+          </div>
           {loading ? (
             <LoadingState>액션 보드를 불러오는 중입니다.</LoadingState>
           ) : actionItems.length === 0 ? (
@@ -177,43 +185,6 @@ export default function DashboardPage() {
         </div>
 
         <aside className="space-y-6">
-          <TeamPanel team={team} onJoined={loadDashboard} onMessage={setMessage} onError={setError} />
-          <CalendarPanel
-            status={calendarStatus}
-            onStatusChange={setCalendarStatus}
-            onMessage={setMessage}
-            onError={setError}
-          />
-
-          <Card>
-            <CardHeader>
-              <CardTitle>마감 임박</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {dueSoon.length === 0 ? (
-                <p className="text-sm text-slate-500">마감일이 있는 미완료 항목이 없습니다.</p>
-              ) : (
-                dueSoon.map((item) => (
-                  <Link
-                    key={item.id}
-                    href={`/meetings/${item.meeting_id}/actions`}
-                    className="ai-pill block rounded-md p-3 transition hover:bg-white"
-                  >
-                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-                      <p className="line-clamp-2 min-h-10 text-sm font-medium leading-5">{item.description}</p>
-                      <StatusBadge status={item.status} />
-                    </div>
-                    <div className="mt-2 flex min-w-0 items-center gap-2 text-xs text-slate-500">
-                      <span className="truncate">{item.assignee || "담당자 미정"}</span>
-                      <span className="shrink-0 text-slate-300">·</span>
-                      <span className="shrink-0 whitespace-nowrap">{formatDate(item.due_date)}</span>
-                    </div>
-                  </Link>
-                ))
-              )}
-            </CardContent>
-          </Card>
-
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between gap-3">
@@ -261,9 +232,122 @@ export default function DashboardPage() {
               )}
             </CardContent>
           </Card>
+
+          <TeamPanel team={team} onJoined={loadDashboard} onMessage={setMessage} onError={setError} />
+          <CalendarPanel
+            status={calendarStatus}
+            onStatusChange={setCalendarStatus}
+            onMessage={setMessage}
+            onError={setError}
+          />
         </aside>
       </section>
     </AppShell>
+  );
+}
+
+function BoardContextBar({
+  team,
+  dueSoon,
+  activeCount
+}: {
+  team: Team | null;
+  dueSoon: ActionItemWithMeeting[];
+  activeCount: number;
+}) {
+  const totalMemberCount = team?.member_count ?? 0;
+
+  return (
+    <div className="mb-4 flex flex-col gap-3 rounded-lg border border-border bg-white/72 px-4 py-3 shadow-sm backdrop-blur lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex min-w-0 items-center gap-3">
+        <AvatarStack members={team?.members ?? []} totalCount={totalMemberCount} />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-slate-900">{team?.name ?? "현재 워크스페이스"}</p>
+          <p className="mt-0.5 text-xs text-slate-500">
+            {totalMemberCount > 0 ? `${totalMemberCount}명이 함께 보는 실행 보드` : "팀 구성원이 여기에 표시됩니다."}
+          </p>
+        </div>
+      </div>
+      <DueSoonSummary dueSoon={dueSoon} activeCount={activeCount} />
+    </div>
+  );
+}
+
+function AvatarStack({ members, totalCount }: { members: TeamMember[]; totalCount: number }) {
+  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
+  const visible = members.slice(0, MAX_VISIBLE_COLLABORATORS);
+  const hiddenCount = Math.max(0, totalCount - visible.length);
+
+  if (visible.length === 0) {
+    return (
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white bg-slate-100 text-slate-500 shadow-sm">
+        <Users className="h-4 w-4" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative shrink-0">
+      <div className="flex -space-x-2">
+        {visible.map((member, index) => (
+          <button
+            key={member.id}
+            type="button"
+            className={`flex h-9 w-9 items-center justify-center rounded-full border-2 border-white text-xs font-semibold shadow-sm transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 ${avatarStyles[index % avatarStyles.length]}`}
+            title={`${member.name} · ${member.email}`}
+            onClick={() => setSelectedMember((current) => (current?.id === member.id ? null : member))}
+          >
+            {getInitial(member.name)}
+          </button>
+        ))}
+        {hiddenCount > 0 ? (
+          <button
+            type="button"
+            className="flex h-9 min-w-9 items-center justify-center rounded-full border-2 border-white bg-slate-900 px-2 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            title={`${hiddenCount}명 더 있음`}
+            onClick={() => setSelectedMember(null)}
+          >
+            +{hiddenCount}
+          </button>
+        ) : null}
+      </div>
+      {selectedMember ? (
+        <div className="absolute left-0 top-11 z-30 w-64 rounded-md border border-border bg-white p-3 text-sm shadow-lg">
+          <div className="flex items-start gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-semibold text-white">
+              {getInitial(selectedMember.name)}
+            </span>
+            <div className="min-w-0">
+              <p className="truncate font-semibold text-slate-900">{selectedMember.name}</p>
+              <p className="mt-1 truncate text-xs text-slate-500">{selectedMember.email}</p>
+              <p className="mt-2 inline-flex rounded bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">{selectedMember.role}</p>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function DueSoonSummary({ dueSoon, activeCount }: { dueSoon: ActionItemWithMeeting[]; activeCount: number }) {
+  const firstDue = dueSoon[0];
+
+  return (
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <span className="inline-flex items-center gap-2 rounded-md bg-slate-100 px-3 py-2 text-xs font-medium text-slate-600">
+        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+        미완료 {activeCount}개
+      </span>
+      <Link
+        href={firstDue ? `/meetings/${firstDue.meeting_id}/actions` : "/dashboard"}
+        className="inline-flex min-w-0 items-center gap-2 rounded-md bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 transition hover:bg-amber-100"
+      >
+        <CalendarClock className="h-4 w-4 shrink-0" />
+        <span className="truncate">
+          {firstDue ? `가장 가까운 마감 ${formatDate(firstDue.due_date)} · ${dueSoon.length}개` : "마감 예정 항목 없음"}
+        </span>
+      </Link>
+    </div>
   );
 }
 
@@ -457,4 +541,10 @@ function Metric({ title, value, icon }: { title: string; value: number; icon: Re
       </CardContent>
     </Card>
   );
+}
+
+function getInitial(name: string) {
+  const trimmed = name.trim();
+  if (!trimmed) return "?";
+  return trimmed.charAt(0).toUpperCase();
 }

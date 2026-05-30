@@ -70,6 +70,17 @@ def count_team_members(db: Session, team_id: int) -> int:
     return int(db.scalar(select(func.count()).select_from(TeamMembership).where(TeamMembership.team_id == team_id)) or 0)
 
 
+def list_team_members(db: Session, team_id: int) -> list[tuple[TeamMembership, User]]:
+    return list(
+        db.execute(
+            select(TeamMembership, User)
+            .join(User, User.id == TeamMembership.user_id)
+            .where(TeamMembership.team_id == team_id)
+            .order_by(TeamMembership.created_at.asc(), User.email.asc())
+        ).all()
+    )
+
+
 def get_team_role(db: Session, team_id: int, user_id: int) -> str:
     membership = db.scalar(
         select(TeamMembership).where(TeamMembership.team_id == team_id, TeamMembership.user_id == user_id)

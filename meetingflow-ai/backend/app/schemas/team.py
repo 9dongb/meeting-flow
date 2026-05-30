@@ -3,12 +3,23 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
+class TeamMemberRead(BaseModel):
+    id: int
+    name: str
+    role: str
+    email: str
+    joined_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class TeamRead(BaseModel):
     id: int
     name: str
     invite_code: str
     role: str
     member_count: int
+    members: list[TeamMemberRead] = Field(default_factory=list)
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

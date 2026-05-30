@@ -1,13 +1,13 @@
 "use client";
 
 import { CheckCircle2, CircleDot, Clock3, MoreHorizontal, Trash2 } from "lucide-react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { DragEvent } from "react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { PriorityBadge } from "@/components/meetings/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { confidenceLabel, formatDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import type { ActionItemWithMeeting, ActionStatus } from "@/types";
 
 const columns: Array<{
@@ -196,78 +196,88 @@ function ActionItemCard({
   onStatusChange: (item: ActionItemWithMeeting, status: ActionStatus) => void | Promise<void>;
   onDelete: (item: ActionItemWithMeeting) => void | Promise<void>;
 }) {
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const suppressClickRef = useRef(false);
 
   const statusOptions = columns.filter((column) => column.status !== item.status);
+  const dueState = getDueState(item.due_date, item.status);
+
+  function handleDragStart(event: DragEvent<HTMLDivElement>) {
+    suppressClickRef.current = true;
+    onDragStart(event, item);
+  }
+
+  function handleDragEnd() {
+    onDragEnd();
+    window.setTimeout(() => {
+      suppressClickRef.current = false;
+    }, 0);
+  }
 
   return (
     <div
       draggable={!updating}
-      onDragStart={(event) => onDragStart(event, item)}
-      onDragEnd={onDragEnd}
-      className="cursor-grab rounded-md border border-white/70 bg-white/78 p-3 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:shadow-md active:cursor-grabbing"
+      onClick={() => {
+        if (suppressClickRef.current) return;
+        router.push(`/meetings/${item.meeting_id}`);
+      }}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      className="cursor-pointer rounded-md border border-white/70 bg-white/78 p-3 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:shadow-md active:cursor-grabbing"
     >
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-        <p className="line-clamp-2 min-h-10 text-sm font-medium leading-5">{item.description}</p>
-        <div className="flex items-center gap-1">
-          <PriorityBadge priority={item.priority} />
-          <div className="relative">
-            <button
-              type="button"
-              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-white hover:text-slate-900"
-              aria-label="액션 아이템 더보기"
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                setMenuOpen((current) => !current);
-              }}
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </button>
-            {menuOpen ? (
-              <div className="absolute right-0 top-8 z-30 w-36 rounded-md border border-border bg-white p-1 text-sm shadow-lg">
-                <p className="px-2 py-1 text-xs font-medium text-slate-400">상태변경</p>
-                {statusOptions.map((option) => (
-                  <button
-                    key={option.status}
-                    type="button"
-                    disabled={updating}
-                    className="flex w-full items-center rounded px-2 py-2 text-left hover:bg-slate-50 disabled:opacity-50"
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      setMenuOpen(false);
-                      void onStatusChange(item, option.status);
-                    }}
-                  >
-                    {option.title}
-                  </button>
-                ))}
+        <p className="line-clamp-3 min-h-10 text-sm font-medium leading-5">{item.description}</p>
+        <div className="relative">
+          <button
+            type="button"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-white hover:text-slate-900"
+            aria-label="액션 아이템 더보기"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              setMenuOpen((current) => !current);
+            }}
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </button>
+          {menuOpen ? (
+            <div className="absolute right-0 top-8 z-30 w-36 rounded-md border border-border bg-white p-1 text-sm shadow-lg">
+              <p className="px-2 py-1 text-xs font-medium text-slate-400">상태변경</p>
+              {statusOptions.map((option) => (
                 <button
+                  key={option.status}
                   type="button"
                   disabled={updating}
-                  className="mt-1 flex w-full items-center gap-2 rounded px-2 py-2 text-left text-red-600 hover:bg-red-50 disabled:opacity-50"
+                  className="flex w-full items-center rounded px-2 py-2 text-left hover:bg-slate-50 disabled:opacity-50"
                   onClick={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
                     setMenuOpen(false);
-                    void onDelete(item);
+                    void onStatusChange(item, option.status);
                   }}
                 >
-                  <Trash2 className="h-4 w-4" />
-                  삭제
+                  {option.title}
                 </button>
-              </div>
-            ) : null}
-          </div>
+              ))}
+              <button
+                type="button"
+                disabled={updating}
+                className="mt-1 flex w-full items-center gap-2 rounded px-2 py-2 text-left text-red-600 hover:bg-red-50 disabled:opacity-50"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setMenuOpen(false);
+                  void onDelete(item);
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+                삭제
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
-
-      <Link href={`/meetings/${item.meeting_id}`} className="mt-3 block truncate text-xs font-medium text-slate-600 hover:underline">
-        {item.meeting_title}
-      </Link>
-
-      <p className="mt-2 whitespace-nowrap text-xs text-slate-500">AI 신뢰도 {confidenceLabel(item.confidence)}</p>
 
       {item.source_text ? (
         <p className="mt-3 line-clamp-2 rounded border border-slate-200/70 bg-white/60 px-2 py-1.5 text-xs leading-5 text-slate-500">
@@ -275,10 +285,61 @@ function ActionItemCard({
         </p>
       ) : null}
 
-      <div className="mt-4 flex items-center justify-between gap-3 text-xs text-slate-500">
-        <span className="shrink-0 whitespace-nowrap rounded bg-slate-100/80 px-2 py-1 text-slate-600">마감 {formatDate(item.due_date)}</span>
-        <span className="min-w-0 truncate text-right font-medium text-slate-700">{item.assignee || "담당자 미정"}</span>
+      <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+        <PriorityBadge priority={item.priority} />
+        <span className={`shrink-0 whitespace-nowrap rounded px-2 py-1 font-medium ${dueState.className}`}>{dueState.label}</span>
+        <span className="min-w-0 truncate font-medium text-slate-700">{item.assignee || "담당자 미정"}</span>
       </div>
     </div>
   );
+}
+
+function getDueState(dueDate?: string | null, status?: ActionStatus) {
+  if (!dueDate) {
+    return {
+      label: "마감 미정",
+      className: "bg-slate-100/80 text-slate-600"
+    };
+  }
+
+  if (status === "done") {
+    return {
+      label: `마감 ${formatDate(dueDate)}`,
+      className: "bg-slate-100/80 text-slate-600"
+    };
+  }
+
+  const today = startOfDay(new Date());
+  const due = startOfDay(new Date(dueDate));
+  const daysLeft = Math.round((due.getTime() - today.getTime()) / 86_400_000);
+
+  if (daysLeft < 0) {
+    return {
+      label: `지남 D+${Math.abs(daysLeft)}`,
+      className: "bg-red-50 text-red-700"
+    };
+  }
+
+  if (daysLeft === 0) {
+    return {
+      label: "오늘 마감",
+      className: "bg-red-50 text-red-700"
+    };
+  }
+
+  if (daysLeft <= 3) {
+    return {
+      label: `D-${daysLeft}`,
+      className: "bg-amber-50 text-amber-700"
+    };
+  }
+
+  return {
+    label: `마감 ${formatDate(dueDate)}`,
+    className: "bg-slate-100/80 text-slate-600"
+  };
+}
+
+function startOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
