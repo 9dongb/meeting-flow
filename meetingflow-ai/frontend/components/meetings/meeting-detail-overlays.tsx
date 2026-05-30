@@ -78,7 +78,7 @@ export function ParticipantsPopover({ participants }: { participants: Participan
           ) : (
             <ul className="max-h-64 space-y-2 overflow-y-auto pr-1">
               {participants.map((participant, index) => (
-                <li key={`${participant.name}-${participant.email ?? index}`} className="rounded-md bg-white/70 px-3 py-2">
+                <li key={`${participant.name}-${participant.email ?? index}`} className="rounded-md bg-slate-50 px-3 py-2">
                   <p className="text-sm font-medium text-slate-900">{participant.name}</p>
                   {participant.email ? <p className="mt-0.5 truncate text-xs text-slate-500">{participant.email}</p> : null}
                 </li>
@@ -103,14 +103,14 @@ export function TranscriptModal({ transcript, onClose }: { transcript: string; o
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-6" role="dialog" aria-modal="true" aria-labelledby="transcript-title">
-      <div className="ai-card flex max-h-[86vh] w-full max-w-3xl flex-col rounded-lg border bg-white shadow-soft">
+      <div className="flex max-h-[86vh] w-full max-w-3xl flex-col rounded-md border border-border bg-white shadow-xl">
         <div className="flex items-center justify-between gap-4 border-b border-border px-5 py-4">
           <h2 id="transcript-title" className="text-base font-semibold tracking-normal text-slate-950">
             회의 원문
           </h2>
           <button
             type="button"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition hover:bg-white/70 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300"
             onClick={onClose}
             aria-label="회의 원문 닫기"
           >

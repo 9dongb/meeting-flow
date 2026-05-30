@@ -13,6 +13,8 @@ import { Input, Textarea } from "@/components/ui/input";
 import { api } from "@/lib/api";
 
 type InputMode = "manual" | "upload";
+const DEFAULT_TRANSCRIPT =
+  "2026년 5월 20일 A 프로젝트 회의에서 MVP 출시 일정, QA 진행 상황, 디자인 수정 범위를 논의했다. MVP 출시는 기존 일정대로 진행하되 QA 리스크가 큰 기능은 우선순위를 조정하기로 했다. 결제 기능은 1차 출시 범위에서 제외하고, 디자인 수정안은 이번 주 금요일까지 확정한다. 김비수는 Redis 캐시 레이어 설계와 FastAPI 백엔드 적용을 2026년 2월 2일까지 진행한다. 이미희는 예외 케이스를 포함한 QA 시나리오를 2026년 1월 31일까지 최종 수정한다. 홍몸동은 일정 변경 내용을 마케팅과 사업팀에 공유하고 조율한다. 결제 기능의 2차 출시 포함 여부, 고객사 검수 일정, QA 리소스 추가 배정 가능 여부는 추가 확인이 필요하다.";
 
 export default function NewMeetingPage() {
   const router = useRouter();
@@ -20,9 +22,7 @@ export default function NewMeetingPage() {
   const [title, setTitle] = useState("제품 주간 싱크");
   const [meetingDate, setMeetingDate] = useState(new Date().toISOString().slice(0, 10));
   const [participants, setParticipants] = useState("민지 <minji@example.com>, 준호, Alex");
-  const [transcript, setTranscript] = useState(
-    "이번 주에는 회의록 분석 결과 화면과 액션 아이템 검토 흐름을 먼저 만든다. Notion과 Calendar, Gmail은 실제 전송 없이 사용자가 검토한 뒤 Mock 실행하는 방식으로 둔다."
-  );
+  const [transcript, setTranscript] = useState(DEFAULT_TRANSCRIPT);
   const [selectedFileName, setSelectedFileName] = useState("");
   const [loading, setLoading] = useState(false);
   const [fileLoading, setFileLoading] = useState(false);
@@ -90,9 +90,7 @@ export default function NewMeetingPage() {
       setTranscript("");
     }
     if (nextMode === "manual" && !transcript.trim()) {
-      setTranscript(
-        "이번 주에는 회의록 분석 결과 화면과 액션 아이템 검토 흐름을 먼저 만든다. Notion과 Calendar, Gmail은 실제 전송 없이 사용자가 검토한 뒤 Mock 실행하는 방식으로 둔다."
-      );
+      setTranscript(DEFAULT_TRANSCRIPT);
     }
   }
 
@@ -100,7 +98,7 @@ export default function NewMeetingPage() {
     <AppShell>
       <div className="mx-auto mb-8 max-w-4xl">
         <p className="text-sm font-medium text-slate-500">New Meeting</p>
-        <h1 className="ai-gradient-text mt-1 text-2xl font-semibold tracking-normal">회의록 생성</h1>
+        <h1 className="mt-1 text-2xl font-semibold tracking-normal text-slate-950">회의록 생성</h1>
       </div>
 
       {!mode ? (
@@ -108,7 +106,7 @@ export default function NewMeetingPage() {
           <button className="text-left" onClick={() => selectMode("manual")}>
             <Card className="h-full transition hover:-translate-y-0.5 hover:border-slate-400">
               <CardHeader>
-                <div className="ai-brand-mark mb-3 inline-flex h-10 w-10 items-center justify-center rounded-md text-white">
+                <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-md border border-blue-100 bg-blue-50 text-[#0f6cbd]">
                   <Keyboard className="h-5 w-5" />
                 </div>
                 <CardTitle>직접 작성</CardTitle>
@@ -124,7 +122,7 @@ export default function NewMeetingPage() {
           <button className="text-left" onClick={() => selectMode("upload")}>
             <Card className="h-full transition hover:-translate-y-0.5 hover:border-slate-400">
               <CardHeader>
-                <div className="ai-brand-mark mb-3 inline-flex h-10 w-10 items-center justify-center rounded-md text-white">
+                <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-md border border-blue-100 bg-blue-50 text-[#0f6cbd]">
                   <Upload className="h-5 w-5" />
                 </div>
                 <CardTitle>파일 업로드</CardTitle>
@@ -194,15 +192,15 @@ export default function NewMeetingPage() {
                   </label>
                 </>
               ) : (
-                <label className="ai-pill block rounded-md border-dashed p-5">
+                <label className="block rounded-md border border-dashed border-border bg-white p-5 shadow-sm">
                   <div className="flex flex-col items-center text-center">
-                    <div className="ai-brand-mark mb-3 rounded-md p-3 text-white">
+                    <div className="mb-3 rounded-md border border-blue-100 bg-blue-50 p-3 text-[#0f6cbd]">
                       <FileText className="h-6 w-6" />
                     </div>
                     <p className="text-sm font-medium">회의록 파일 업로드</p>
                     <p className="mt-1 text-xs text-slate-500">txt, docx 파일을 지원합니다.</p>
                     <Input
-                      className="mt-5 bg-white/86"
+                      className="mt-5"
                       type="file"
                       accept=".txt,.docx,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                       onChange={onFileChange}

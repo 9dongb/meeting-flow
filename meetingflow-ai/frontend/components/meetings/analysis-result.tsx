@@ -58,7 +58,9 @@ export function AnalysisResult({
             ) : (
               <ul className="space-y-2 text-sm text-slate-700">
                 {result.topics.map((topic) => (
-                  <li key={topic}>- {topic}</li>
+                  <li key={topic} className="rounded-md border border-border bg-white px-3 py-2 shadow-sm">
+                    {topic}
+                  </li>
                 ))}
               </ul>
             )}
@@ -74,7 +76,7 @@ export function AnalysisResult({
               <p className="text-sm text-slate-500">결정사항이 없습니다.</p>
             ) : (
               result.decisions.map((decision) => (
-                <div key={decision.content} className="rounded-md border border-border p-3">
+                <div key={decision.content} className="rounded-md border border-border bg-white p-3 shadow-sm">
                   <div className="flex items-start justify-between gap-3">
                     <p className="text-sm font-medium">{decision.content}</p>
                     <Badge tone="green">{confidenceLabel(decision.confidence)}</Badge>
@@ -96,7 +98,7 @@ export function AnalysisResult({
             <p className="text-sm text-slate-500">액션 아이템이 없습니다.</p>
           ) : (
             result.action_items.map((item) => (
-              <div key={item.description} className="grid gap-3 rounded-md border border-border p-3 md:grid-cols-[1fr_auto]">
+              <div key={item.description} className="grid gap-3 rounded-md border border-border bg-white p-3 shadow-sm md:grid-cols-[1fr_auto]">
                 <div>
                   <p className="text-sm font-medium">{item.description}</p>
                   <p className="mt-2 text-xs text-slate-500">
@@ -120,7 +122,7 @@ export function AnalysisResult({
               <p className="text-sm text-slate-500">후속 확인 사항이 없습니다.</p>
             ) : (
               result.unresolved_issues.map((issue) => (
-                <div key={issue.content} className="rounded-md border border-border p-3">
+                <div key={issue.content} className="rounded-md border border-border bg-white p-3 shadow-sm">
                   <p className="text-sm font-medium">{issue.content}</p>
                   <p className="mt-2 text-xs text-slate-500">
                     담당: {issue.owner || "미정"} · 다음 단계: {issue.next_step || "미정"}

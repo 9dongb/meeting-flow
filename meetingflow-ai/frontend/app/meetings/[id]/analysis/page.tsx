@@ -140,7 +140,7 @@ export default function MeetingAnalysisPage() {
         <div className="space-y-6">
           {message ? <Feedback variant="success">{message}</Feedback> : null}
           {draftError ? <Feedback variant="error">{draftError}</Feedback> : null}
-          <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
+          <div className="flex flex-col justify-between gap-4 rounded-md border border-border bg-white px-5 py-5 shadow-sm lg:flex-row lg:items-start">
             <div>
               <p className="text-sm font-medium text-slate-500">Analysis Result</p>
               <h1 className="mt-1 text-3xl font-semibold tracking-normal">{displayTitle}</h1>
@@ -206,7 +206,7 @@ function AnalysisActionsMenu({
       <button
         type="button"
         disabled={disabled}
-        className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-500 transition hover:bg-white/80 hover:text-slate-900 disabled:opacity-50"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50"
         aria-label="분석 결과 더보기"
         onClick={() => setOpen((current) => !current)}
       >

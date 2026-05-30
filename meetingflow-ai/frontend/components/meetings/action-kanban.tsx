@@ -140,8 +140,8 @@ function KanbanColumn({
 }) {
   return (
     <Card
-      className={`${status === "done" ? "bg-white/62" : ""} ${
-        isDragOver ? "border-blue-300 shadow-[0_18px_50px_rgba(66,133,244,0.18)]" : ""
+      className={`${status === "done" ? "bg-slate-50" : ""} ${
+        isDragOver ? "border-blue-300 shadow-[0_18px_50px_rgba(15,108,189,0.16)]" : ""
       }`}
       onDragOver={onDragOver}
       onDrop={onDrop}
@@ -155,7 +155,7 @@ function KanbanColumn({
             </CardTitle>
             <p className="mt-2 text-xs text-slate-500">{description}</p>
           </div>
-          <span className="ai-pill rounded-md px-2 py-1 text-xs font-medium text-slate-600">{items.length}</span>
+          <span className="rounded-md border border-border bg-white px-2 py-1 text-xs font-medium text-slate-600">{items.length}</span>
         </div>
       </CardHeader>
       <CardContent className="min-h-72 space-y-3">
@@ -224,7 +224,7 @@ function ActionItemCard({
       }}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      className="cursor-pointer rounded-md border border-white/70 bg-white/78 p-3 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:shadow-md active:cursor-grabbing"
+      className="cursor-pointer rounded-md border border-border bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md active:cursor-grabbing"
     >
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
         <p className="line-clamp-3 min-h-10 text-sm font-medium leading-5">{item.description}</p>
@@ -280,7 +280,7 @@ function ActionItemCard({
       </div>
 
       {item.source_text ? (
-        <p className="mt-3 line-clamp-2 rounded border border-slate-200/70 bg-white/60 px-2 py-1.5 text-xs leading-5 text-slate-500">
+        <p className="mt-3 line-clamp-2 rounded border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs leading-5 text-slate-500">
           {item.source_text}
         </p>
       ) : null}

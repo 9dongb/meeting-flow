@@ -163,7 +163,7 @@ export default function DashboardPage() {
       <div className="mb-8">
         <div>
           <p className="text-sm font-medium text-slate-500">{team ? team.name : "Dashboard"}</p>
-          <h1 className="ai-gradient-text mt-1 text-2xl font-semibold tracking-normal">회의 후속 업무 보드</h1>
+          <h1 className="mt-1 text-2xl font-semibold tracking-normal text-slate-950">회의 후속 업무 보드</h1>
         </div>
       </div>
 
@@ -229,7 +229,7 @@ export default function DashboardPage() {
               ) : (
                 <div className="divide-y divide-border">
                   {meetings.slice(0, 5).map((meeting) => (
-                    <div key={meeting.id} className="px-5 py-4 transition hover:bg-white/64">
+                    <div key={meeting.id} className="px-5 py-4 transition hover:bg-slate-50">
                       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
                         <Link href={`/meetings/${meeting.id}`} className="min-w-0">
                           <p className="truncate font-medium">{meeting.title}</p>
@@ -242,7 +242,7 @@ export default function DashboardPage() {
                         />
                       </div>
                       {editingMeetingId === meeting.id ? (
-                        <div className="mt-4 rounded-md border border-border bg-white/72 p-3">
+                        <div className="mt-4 rounded-md border border-border bg-white p-3">
                           <MeetingEditForm
                             meeting={meeting}
                             saving={savingMeetingId === meeting.id}
@@ -291,7 +291,7 @@ function BoardContextBar({
   const totalMemberCount = team?.member_count ?? 0;
 
   return (
-    <div className="mb-4 flex flex-col gap-3 rounded-lg border border-border bg-white/72 px-4 py-3 shadow-sm backdrop-blur lg:flex-row lg:items-center lg:justify-between">
+    <div className="mb-4 flex flex-col gap-3 rounded-md border border-border bg-white px-4 py-3 shadow-sm lg:flex-row lg:items-center lg:justify-between">
       <div className="flex min-w-0 items-center gap-3">
         <AvatarStack members={team?.members ?? []} totalCount={totalMemberCount} />
         <div className="min-w-0">
@@ -320,7 +320,7 @@ function AvatarStack({ members, totalCount }: { members: TeamMember[]; totalCoun
 
   if (visible.length === 0) {
     return (
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white bg-slate-100 text-slate-500 shadow-sm">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-slate-500 shadow-sm">
         <Users className="h-4 w-4" />
       </div>
     );
@@ -333,7 +333,7 @@ function AvatarStack({ members, totalCount }: { members: TeamMember[]; totalCoun
           <button
             key={member.id}
             type="button"
-            className={`flex h-9 w-9 items-center justify-center rounded-full border-2 border-white text-xs font-semibold shadow-sm transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 ${avatarStyles[index % avatarStyles.length]}`}
+            className={`flex h-9 w-9 items-center justify-center rounded-full border-2 border-white text-xs font-semibold shadow-sm transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[#0f6cbd] ${avatarStyles[index % avatarStyles.length]}`}
             title={`${member.name} · ${member.email}`}
             onClick={() => setSelectedMember((current) => (current?.id === member.id ? null : member))}
           >
@@ -343,7 +343,7 @@ function AvatarStack({ members, totalCount }: { members: TeamMember[]; totalCoun
         {hiddenCount > 0 ? (
           <button
             type="button"
-            className="flex h-9 min-w-9 items-center justify-center rounded-full border-2 border-white bg-slate-900 px-2 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex h-9 min-w-9 items-center justify-center rounded-full border-2 border-white bg-slate-900 px-2 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[#0f6cbd]"
             title={`${hiddenCount}명 더 있음`}
             onClick={() => setSelectedMember(null)}
           >
@@ -571,7 +571,7 @@ function TeamPanel({
         </div>
         {team ? (
           <button
-            className="ai-pill flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-xs"
+            className="flex w-full items-center justify-between gap-3 rounded-md border border-border bg-white px-3 py-2 text-left text-xs shadow-sm"
             type="button"
             onClick={copyInviteCode}
           >
@@ -605,7 +605,7 @@ function Metric({ title, value, icon }: { title: string; value: number; icon: Re
           <p className="text-sm text-slate-500">{title}</p>
           <p className="mt-2 text-2xl font-semibold">{value}</p>
         </div>
-        <div className="ai-brand-mark rounded-md p-2 text-white shadow-sm">{icon}</div>
+        <div className="rounded-md border border-blue-100 bg-blue-50 p-2 text-[#0f6cbd]">{icon}</div>
       </CardContent>
     </Card>
   );

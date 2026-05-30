@@ -79,7 +79,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (checkingAuth) {
     return (
       <div className="work-surface flex min-h-screen items-center justify-center px-5">
-        <div className="ai-pill w-full max-w-sm rounded-xl px-5 py-4 text-sm text-slate-600">
+        <div className="w-full max-w-sm rounded-md border border-border bg-white px-5 py-4 text-sm text-slate-600 shadow-sm">
           <div className="mb-3 flex items-center gap-2 font-medium">
             <span className="ai-brand-mark flex h-8 w-8 items-center justify-center rounded-md text-white">
               <Bot className="h-4 w-4" />
@@ -93,23 +93,54 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen work-surface">
-      <header className="ai-topbar sticky top-0 z-20 border-b backdrop-blur-xl">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-5">
-          <Link href="/dashboard" className="flex items-center gap-2 text-sm font-semibold">
-            <span className="ai-brand-mark flex h-8 w-8 items-center justify-center rounded-md text-white shadow-sm">
+    <div className="min-h-screen work-surface text-slate-950">
+      <div className="flex min-h-screen">
+        <aside className="hidden w-64 shrink-0 border-r border-border bg-white px-4 py-4 lg:flex lg:flex-col">
+          <Link href="/dashboard" className="flex items-center gap-3 rounded-md px-2 py-2 text-sm font-semibold">
+            <span className="ai-brand-mark flex h-9 w-9 items-center justify-center rounded-md text-white shadow-sm">
               <Bot className="h-4 w-4" />
             </span>
-            <span className="ai-gradient-text">MeetingFlow AI</span>
+            <span>
+              <span className="block text-slate-950">MeetingFlow AI</span>
+              <span className="block text-xs font-medium text-slate-500">Execution workspace</span>
+            </span>
           </Link>
-          <nav className="flex items-center gap-1">
-            <Link href="/dashboard" className="inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm hover:bg-slate-100">
+          <nav className="mt-8 space-y-1">
+            <Link href="/dashboard" className="flex h-10 items-center gap-2 rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-950">
               <LayoutDashboard className="h-4 w-4" />
               대시보드
             </Link>
-            <Link href="/meetings/new" className="inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm hover:bg-slate-100">
-              <PlusCircle className="h-4 w-4" />새 회의록
+            <Link href="/meetings/new" className="flex h-10 items-center gap-2 rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-950">
+              <PlusCircle className="h-4 w-4" />
+              새 회의록
             </Link>
+          </nav>
+          <div className="mt-auto rounded-md border border-border bg-slate-50 px-3 py-3 text-xs leading-5 text-slate-600">
+            <p className="font-semibold text-slate-900">AI Review</p>
+            <p className="mt-1">회의 요약, 결정사항, 액션 아이템을 한 작업대에서 검토합니다.</p>
+          </div>
+        </aside>
+
+        <div className="min-w-0 flex-1">
+          <header className="ai-topbar sticky top-0 z-20 border-b">
+            <div className="flex h-14 items-center justify-between px-5">
+              <Link href="/dashboard" className="flex items-center gap-2 text-sm font-semibold lg:hidden">
+                <span className="ai-brand-mark flex h-8 w-8 items-center justify-center rounded-md text-white shadow-sm">
+                  <Bot className="h-4 w-4" />
+                </span>
+                <span>MeetingFlow AI</span>
+              </Link>
+              <div className="hidden text-sm font-medium text-slate-500 lg:block">회의 후속 업무 실행 콘솔</div>
+              <nav className="hidden items-center gap-1 md:flex lg:hidden">
+                <Link href="/dashboard" className="inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm hover:bg-slate-100">
+                  <LayoutDashboard className="h-4 w-4" />
+                  대시보드
+                </Link>
+                <Link href="/meetings/new" className="inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm hover:bg-slate-100">
+                  <PlusCircle className="h-4 w-4" />새 회의록
+                </Link>
+              </nav>
+              <div className="flex items-center gap-1">
             <div ref={profileRef} className="relative">
               <button
                 type="button"
@@ -147,10 +178,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               <LogOut className="h-4 w-4" />
             </Button>
-          </nav>
+              </div>
+            </div>
+          </header>
+          <main className="px-5 py-8 lg:px-8">{children}</main>
         </div>
-      </header>
-      <main className="mx-auto max-w-7xl px-5 py-8">{children}</main>
+      </div>
     </div>
   );
 }

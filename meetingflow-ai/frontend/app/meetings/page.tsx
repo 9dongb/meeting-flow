@@ -67,7 +67,7 @@ export default function MeetingsPage() {
       <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <p className="text-sm font-medium text-slate-500">Meetings</p>
-          <h1 className="ai-gradient-text mt-1 text-2xl font-semibold tracking-normal">전체 회의 목록</h1>
+          <h1 className="mt-1 text-2xl font-semibold tracking-normal text-slate-950">전체 회의 목록</h1>
         </div>
         <Link href="/meetings/new">
           <Button>
@@ -111,7 +111,7 @@ export default function MeetingsPage() {
                     />
                   </div>
                   {editingId === meeting.id ? (
-                    <div className="mt-4 rounded-md border border-border bg-white/72 p-4">
+                    <div className="mt-4 rounded-md border border-border bg-white p-4">
                       <MeetingEditForm
                         meeting={meeting}
                         saving={savingId === meeting.id}

@@ -24,7 +24,7 @@ export function MeetingActionsMenu({
       <button
         type="button"
         disabled={disabled}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition hover:bg-white/80 hover:text-slate-900 disabled:opacity-50"
+        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50"
         aria-label="회의 더보기"
         onClick={(event) => {
           event.preventDefault();

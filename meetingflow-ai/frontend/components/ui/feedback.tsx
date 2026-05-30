@@ -3,9 +3,9 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 const variants = {
-  error: "border-red-200 bg-red-50/85 text-red-700",
-  success: "border-emerald-200 bg-emerald-50/85 text-emerald-700",
-  info: "border-slate-200 bg-white/72 text-slate-700"
+  error: "border-red-200 bg-red-50 text-red-700",
+  success: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  info: "border-slate-200 bg-white text-slate-700"
 };
 
 export function Feedback({
@@ -17,15 +17,15 @@ export function Feedback({
   variant?: keyof typeof variants;
   className?: string;
 }) {
-  return <p className={cn("rounded-md border px-3 py-2 text-sm shadow-sm backdrop-blur", variants[variant], className)}>{children}</p>;
+  return <p className={cn("rounded-md border px-3 py-2 text-sm shadow-sm", variants[variant], className)}>{children}</p>;
 }
 
 export function LoadingState({ children = "불러오는 중입니다." }: { children?: ReactNode }) {
   return (
-    <div className="ai-pill rounded-lg px-4 py-3">
+    <div className="rounded-md border border-border bg-white px-4 py-3 shadow-sm">
       <div className="flex items-center justify-between gap-3 text-sm text-slate-600">
         <span>{children}</span>
-        <span className="ai-gradient-text text-xs font-semibold">AI working</span>
+        <span className="text-xs font-semibold text-[#0f6cbd]">Processing</span>
       </div>
       <div className="ai-loader mt-3" />
     </div>
