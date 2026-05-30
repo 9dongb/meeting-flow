@@ -23,7 +23,7 @@ class GoogleCalendarSyncError(Exception):
 class GoogleCalendarSyncService:
     def sync_action_item(self, db: Session, user_id: int, item: ActionItem) -> ActionItemCalendarLink | None:
         account = get_google_account_for_user(db, user_id)
-        if not account or not account.calendar_sync_enabled:
+        if not account or not account.calendar_scope_granted or not account.calendar_sync_enabled:
             return None
         if not item.due_date:
             return self._mark_link(

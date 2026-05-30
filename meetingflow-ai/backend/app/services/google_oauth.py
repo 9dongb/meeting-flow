@@ -11,6 +11,7 @@ GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
 
 LOGIN_SCOPES = ["openid", "email", "profile"]
 CALENDAR_SCOPES = ["openid", "email", "profile", "https://www.googleapis.com/auth/calendar.events"]
+CALENDAR_EVENTS_SCOPE = "https://www.googleapis.com/auth/calendar.events"
 
 
 class GoogleOAuthError(Exception):
@@ -80,3 +81,9 @@ def fetch_google_userinfo(access_token: str) -> dict:
         raise GoogleOAuthError(f"Google userinfo request failed: {exc.response.text[:300]}") from exc
     except httpx.HTTPError as exc:
         raise GoogleOAuthError(f"Google userinfo request failed: {exc}") from exc
+
+
+def has_calendar_events_scope(scope_value: str | None) -> bool:
+    if not scope_value:
+        return False
+    return CALENDAR_EVENTS_SCOPE in set(scope_value.split())

@@ -12,7 +12,14 @@ from app.crud.teams import get_active_team
 from app.models.action_item_calendar_link import ActionItemCalendarLink
 from app.schemas.google_integration import GoogleCalendarSettingsUpdate, GoogleCalendarStatus
 from app.services.integrations.google_calendar_sync import GoogleCalendarSyncService
-from app.services.google_oauth import CALENDAR_SCOPES, GoogleOAuthError, build_google_auth_url, exchange_code_for_tokens, fetch_google_userinfo
+from app.services.google_oauth import (
+    CALENDAR_SCOPES,
+    GoogleOAuthError,
+    build_google_auth_url,
+    exchange_code_for_tokens,
+    fetch_google_userinfo,
+    has_calendar_events_scope,
+)
 
 
 router = APIRouter(prefix="/integrations/google-calendar", tags=["google-calendar"])
@@ -23,7 +30,7 @@ GOOGLE_CALENDAR_STATE_COOKIE = "meetingflow_google_calendar_state"
 def google_calendar_status(db: DbSession, current_user: CurrentUser) -> GoogleCalendarStatus:
     account = get_google_account_for_user(db, current_user.id)
     if not account:
-        return GoogleCalendarStatus(connected=False, sync_enabled=False)
+        return GoogleCalendarStatus(connected=False, sync_enabled=False, permission_granted=False)
     return _calendar_status(db, current_user.id, account)
 
 
@@ -73,6 +80,14 @@ def google_calendar_callback(
     except GoogleOAuthError as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
 
+    granted_scopes = tokens.get("scope")
+    calendar_scope_granted = has_calendar_events_scope(granted_scopes)
+    if not calendar_scope_granted:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Google Calendar permission was not granted. Please reconnect Calendar and approve event access.",
+        )
+
     account = upsert_google_account(
         db,
         user=current_user,
@@ -81,6 +96,8 @@ def google_calendar_callback(
         access_token=tokens.get("access_token"),
         refresh_token=tokens.get("refresh_token"),
         expires_in=tokens.get("expires_in"),
+        granted_scopes=granted_scopes,
+        calendar_scope_granted=True,
     )
     update_calendar_settings(db, account, enabled=True)
     _sync_current_team_items(db, current_user.id)
@@ -105,6 +122,8 @@ def update_google_calendar_settings(
     account = get_google_account_for_user(db, current_user.id)
     if not account:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Google Calendar is not connected")
+    if not account.calendar_scope_granted:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Google Calendar permission has not been granted")
     was_enabled = account.calendar_sync_enabled
     update_calendar_settings(
         db,
@@ -122,6 +141,8 @@ def sync_google_calendar_now(db: DbSession, current_user: CurrentUser) -> Google
     account = get_google_account_for_user(db, current_user.id)
     if not account:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Google Calendar is not connected")
+    if not account.calendar_scope_granted:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Google Calendar permission has not been granted")
     if not account.calendar_sync_enabled:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Google Calendar sync is off")
     _sync_current_team_items(db, current_user.id)
@@ -152,8 +173,9 @@ def _calendar_status(db: DbSession, user_id: int, account) -> GoogleCalendarStat
         .order_by(ActionItemCalendarLink.last_synced_at.desc().nullslast(), ActionItemCalendarLink.id.desc())
     )
     return GoogleCalendarStatus(
-        connected=bool(account.refresh_token_encrypted),
+        connected=bool(account.refresh_token_encrypted and account.calendar_scope_granted),
         sync_enabled=account.calendar_sync_enabled,
+        permission_granted=account.calendar_scope_granted,
         email=account.email,
         calendar_id=account.calendar_id,
         synced_count=counts.get("synced", 0),

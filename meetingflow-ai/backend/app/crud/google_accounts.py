@@ -24,6 +24,8 @@ def upsert_google_account(
     access_token: str | None = None,
     refresh_token: str | None = None,
     expires_in: int | None = None,
+    granted_scopes: str | None = None,
+    calendar_scope_granted: bool | None = None,
 ) -> UserGoogleAccount:
     account = get_google_account_for_user(db, user.id) or get_google_account_by_sub(db, google_sub)
     if not account:
@@ -38,6 +40,12 @@ def upsert_google_account(
         account.refresh_token_encrypted = encrypt_secret(refresh_token)
     if expires_in:
         account.token_expires_at = datetime.now(UTC) + timedelta(seconds=max(expires_in - 60, 0))
+    if granted_scopes is not None:
+        account.granted_scopes = granted_scopes
+    if calendar_scope_granted is not None:
+        account.calendar_scope_granted = calendar_scope_granted
+        if not calendar_scope_granted:
+            account.calendar_sync_enabled = False
 
     db.add(account)
     db.commit()
@@ -52,6 +60,8 @@ def update_calendar_settings(
     calendar_id: str | None = None,
 ) -> UserGoogleAccount:
     if enabled is not None:
+        if enabled and not account.calendar_scope_granted:
+            raise ValueError("Google Calendar scope has not been granted.")
         account.calendar_sync_enabled = enabled
     if calendar_id is not None:
         account.calendar_id = calendar_id.strip() or "primary"

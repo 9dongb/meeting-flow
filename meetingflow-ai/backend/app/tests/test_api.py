@@ -67,6 +67,7 @@ def test_google_auth_and_calendar_status_defaults(client: TestClient) -> None:
     assert calendar_status.json() == {
         "connected": False,
         "sync_enabled": False,
+        "permission_granted": False,
         "email": None,
         "calendar_id": "primary",
         "synced_count": 0,

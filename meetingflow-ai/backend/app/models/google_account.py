@@ -16,6 +16,8 @@ class UserGoogleAccount(Base):
     access_token_encrypted: Mapped[str | None] = mapped_column(Text)
     refresh_token_encrypted: Mapped[str | None] = mapped_column(Text)
     token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    granted_scopes: Mapped[str | None] = mapped_column(Text)
+    calendar_scope_granted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     calendar_sync_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     calendar_id: Mapped[str] = mapped_column(String(255), default="primary", nullable=False)
     created_at: Mapped[datetime] = mapped_column(

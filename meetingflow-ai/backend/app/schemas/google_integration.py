@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 class GoogleCalendarStatus(BaseModel):
     connected: bool
     sync_enabled: bool
+    permission_granted: bool = False
     email: str | None = None
     calendar_id: str = "primary"
     synced_count: int = 0

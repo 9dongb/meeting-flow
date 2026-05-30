@@ -281,7 +281,7 @@ function CalendarPanel({
   const [updating, setUpdating] = useState(false);
 
   async function toggleSync() {
-    if (!status?.connected) {
+    if (!status?.permission_granted) {
       window.location.href = `${API_BASE_URL}/integrations/google-calendar/connect`;
       return;
     }
@@ -329,13 +329,13 @@ function CalendarPanel({
       <CardContent className="space-y-4">
         <div>
           <p className="text-sm font-medium">
-            {status?.connected ? (status.sync_enabled ? "동기화 ON" : "연결됨 · 동기화 OFF") : "연결되지 않음"}
+            {status?.permission_granted ? (status.sync_enabled ? "동기화 ON" : "연결됨 · 동기화 OFF") : "권한 필요"}
           </p>
           <p className="mt-1 truncate text-xs text-slate-500">
-            {status?.connected ? `${status.email} · ${status.calendar_id}` : "액션 아이템 마감일을 개인 캘린더에 등록합니다."}
+            {status?.permission_granted ? `${status.email} · ${status.calendar_id}` : "Calendar 이벤트 접근 권한을 승인해야 합니다."}
           </p>
         </div>
-        {status?.connected ? (
+        {status?.permission_granted ? (
           <div className="grid grid-cols-3 gap-2 text-center text-xs">
             <div className="rounded-md bg-emerald-50 px-2 py-2 text-emerald-700">
               <p className="font-semibold">{status.synced_count}</p>
@@ -353,9 +353,9 @@ function CalendarPanel({
         ) : null}
         {status?.last_error ? <p className="line-clamp-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{status.last_error}</p> : null}
         <Button className="w-full" variant={status?.sync_enabled ? "secondary" : "default"} disabled={updating} onClick={toggleSync}>
-          {status?.connected ? (status.sync_enabled ? "동기화 끄기" : "동기화 켜기") : "Calendar 연결"}
+          {status?.permission_granted ? (status.sync_enabled ? "동기화 끄기" : "동기화 켜기") : "Calendar 권한 연결"}
         </Button>
-        {status?.connected && status.sync_enabled ? (
+        {status?.permission_granted && status.sync_enabled ? (
           <Button className="w-full" variant="secondary" disabled={updating} onClick={syncNow}>
             지금 재동기화
           </Button>

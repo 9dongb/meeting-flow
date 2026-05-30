@@ -20,6 +20,15 @@ def run_lightweight_migrations(engine: Engine) -> None:
         BaseTableCheck = inspector.get_table_names()
         if "user_google_accounts" not in BaseTableCheck or "action_item_calendar_links" not in BaseTableCheck:
             return
+        google_account_columns = {column["name"] for column in inspector.get_columns("user_google_accounts")}
+        if "granted_scopes" not in google_account_columns:
+            connection.execute(text("ALTER TABLE user_google_accounts ADD COLUMN granted_scopes TEXT"))
+        if "calendar_scope_granted" not in google_account_columns:
+            connection.execute(
+                text("ALTER TABLE user_google_accounts ADD COLUMN calendar_scope_granted BOOLEAN NOT NULL DEFAULT 0")
+            )
+            connection.execute(text("UPDATE user_google_accounts SET calendar_sync_enabled = 0"))
+
         calendar_link_columns = {
             column["name"]: column for column in inspector.get_columns("action_item_calendar_links")
         }

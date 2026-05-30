@@ -132,8 +132,9 @@ def google_callback(
         google_sub=google_sub,
         email=email,
         access_token=tokens.get("access_token"),
-        refresh_token=tokens.get("refresh_token"),
         expires_in=tokens.get("expires_in"),
+        granted_scopes=tokens.get("scope"),
+        calendar_scope_granted=False,
     )
 
     redirect = _redirect_frontend("/dashboard")

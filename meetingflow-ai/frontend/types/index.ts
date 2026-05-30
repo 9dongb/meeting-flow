@@ -20,6 +20,7 @@ export interface Team {
 export interface GoogleCalendarStatus {
   connected: boolean;
   sync_enabled: boolean;
+  permission_granted: boolean;
   email?: string | null;
   calendar_id: string;
   synced_count: number;
