@@ -1,10 +1,10 @@
-import { AlertTriangle, Mail, RefreshCw } from "lucide-react";
+import { AlertTriangle, FileText, Mail, RefreshCw } from "lucide-react";
 
 import { PriorityBadge } from "@/components/meetings/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { confidenceLabel, formatDate } from "@/lib/utils";
+import { confidenceLabel } from "@/lib/utils";
 import type { MeetingAnalysisResult } from "@/types";
 
 export function AnalysisResult({
@@ -17,7 +17,6 @@ export function AnalysisResult({
   onGenerateEmailDraft?: () => void | Promise<void>;
 }) {
   const isAnalyzable = result.is_analyzable ?? true;
-  const participants = result.participants ?? [];
 
   if (!isAnalyzable) {
     return (
@@ -39,37 +38,6 @@ export function AnalysisResult({
 
   return (
     <div className="grid gap-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>회의 정보</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 text-sm text-slate-700 md:grid-cols-3">
-          <div>
-            <p className="text-xs font-medium text-slate-500">회의록 제목</p>
-            <p className="mt-1 font-medium">{result.meeting_title || "추출된 제목 없음"}</p>
-          </div>
-          <div>
-            <p className="text-xs font-medium text-slate-500">회의 날짜</p>
-            <p className="mt-1 font-medium">{formatDate(result.meeting_date)}</p>
-          </div>
-          <div>
-            <p className="text-xs font-medium text-slate-500">참석자</p>
-            {participants.length === 0 ? (
-              <p className="mt-1 font-medium">참석자 없음</p>
-            ) : (
-              <ul className="mt-1 space-y-1">
-                {participants.map((participant, index) => (
-                  <li key={`${participant.name}-${participant.email ?? index}`}>
-                    <p className="font-medium">{participant.name}</p>
-                    {participant.email ? <p className="truncate text-xs text-slate-500">{participant.email}</p> : null}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
       <Card>
         <CardHeader>
           <CardTitle>회의 요약</CardTitle>
@@ -165,24 +133,32 @@ export function AnalysisResult({
 
         <Card>
           <CardHeader>
-            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-              <CardTitle className="flex items-center gap-2">
-                <Mail className="h-4 w-4" />
-                후속 메일 초안
-              </CardTitle>
-              {onGenerateEmailDraft ? (
-                <Button variant="secondary" disabled={generatingEmailDraft} onClick={() => void onGenerateEmailDraft()}>
-                  <RefreshCw className={`h-4 w-4 ${generatingEmailDraft ? "animate-spin" : ""}`} />
-                  {generatingEmailDraft ? "작성 중" : "다시 작성"}
-                </Button>
-              ) : null}
-            </div>
+            <CardTitle className="flex items-center gap-2">
+              <RefreshCw className="h-4 w-4" />
+              후속 작업
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm font-semibold">{result.follow_up_email.subject}</p>
-            <pre className="mt-3 whitespace-pre-wrap rounded-md bg-slate-50 p-3 text-sm leading-6 text-slate-700">
-              {result.follow_up_email.body}
-            </pre>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Button
+                className="h-12 px-4 text-sm sm:text-base [&>span]:whitespace-nowrap"
+                disabled={generatingEmailDraft || !onGenerateEmailDraft}
+                onClick={() => void onGenerateEmailDraft?.()}
+              >
+                <Mail className={`h-5 w-5 ${generatingEmailDraft ? "animate-pulse" : ""}`} />
+                <span>{generatingEmailDraft ? "메일 초안 작성 중" : "메일 초안 작성"}</span>
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                className="h-12 px-4 text-sm sm:text-base [&>span]:whitespace-nowrap"
+                disabled
+                title="Notion 초안 작성은 준비 중입니다."
+              >
+                <FileText className="h-5 w-5" />
+                <span>Notion 초안 작성</span>
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
