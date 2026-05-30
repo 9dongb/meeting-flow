@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.models.meeting import Meeting
+from app.schemas.analysis import FollowUpEmailAnalysis, MeetingAnalysisResult, ParticipantAnalysis
 from app.services.ai import service as ai_service
 from app.services.ai.groq_analyzer import AIProviderError
 from app.services.rag.schemas import RagAnalysisContext
@@ -95,7 +96,10 @@ def test_create_get_analyze_and_update_action_item(client: TestClient) -> None:
 
     analysis_response = client.post(f"/meetings/{meeting_id}/analyze")
     assert analysis_response.status_code == 200
-    assert "action_items" in analysis_response.json()
+    analysis = analysis_response.json()
+    assert analysis["is_analyzable"] is True
+    assert analysis["meeting_date"] == "2026-05-24"
+    assert "action_items" in analysis
 
     action_items_response = client.get(f"/meetings/{meeting_id}/action-items")
     assert action_items_response.status_code == 200
@@ -190,6 +194,43 @@ def test_ai_analysis_failure_without_fallback(monkeypatch: pytest.MonkeyPatch) -
     meeting = Meeting(id=1, user_id=1, title="Failure", transcript="회의 내용")
     with pytest.raises(ai_service.MeetingAnalysisUnavailableError):
         ai_service.analyze_and_persist_meeting(db=None, meeting=meeting, analyzer=FailingAnalyzer())  # type: ignore[arg-type]
+
+
+def test_analysis_result_uses_today_when_llm_returns_no_date() -> None:
+    result = MeetingAnalysisResult(
+        is_analyzable=True,
+        meeting_title="주간 회의",
+        meeting_date=None,
+        participants=[],
+        summary="제품 출시 일정을 논의했다.",
+        follow_up_email=FollowUpEmailAnalysis(subject="후속 공유", body="회의 정리", recipients=[]),
+    )
+
+    normalized = ai_service.normalize_analysis_result(result)
+
+    assert normalized.meeting_date is not None
+
+
+def test_unanalyzable_result_does_not_keep_forced_items() -> None:
+    result = MeetingAnalysisResult(
+        is_analyzable=False,
+        analysis_failure_reason="회의 맥락을 확인할 수 없습니다.",
+        meeting_title=None,
+        meeting_date=None,
+        participants=[ParticipantAnalysis(name="민지", confidence=0.2)],
+        summary="억지 요약",
+        topics=["억지 주제"],
+        follow_up_email=FollowUpEmailAnalysis(subject="후속 공유", body="회의 정리", recipients=[]),
+    )
+
+    normalized = ai_service.normalize_analysis_result(result)
+
+    assert normalized.meeting_date is not None
+    assert normalized.summary == ""
+    assert normalized.participants == []
+    assert normalized.topics == []
+    assert normalized.decisions == []
+    assert normalized.action_items == []
 
 
 def test_analyze_route_returns_503_when_ai_unavailable(

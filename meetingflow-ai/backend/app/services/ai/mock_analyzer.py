@@ -6,6 +6,7 @@ from app.schemas.analysis import (
     DecisionAnalysis,
     FollowUpEmailAnalysis,
     MeetingAnalysisResult,
+    ParticipantAnalysis,
     UnresolvedIssueAnalysis,
 )
 from app.services.rag.schemas import RagAnalysisContext
@@ -18,6 +19,20 @@ class MockMeetingAnalyzer:
         due_date = date.today() + timedelta(days=7)
 
         return MeetingAnalysisResult(
+            is_analyzable=True,
+            analysis_failure_reason=None,
+            meeting_title=meeting.title,
+            meeting_date=meeting.meeting_date or date.today(),
+            participants=[
+                ParticipantAnalysis(
+                    name=participant.name,
+                    email=participant.email,
+                    role=None,
+                    source_text=participant.name,
+                    confidence=0.8,
+                )
+                for participant in meeting.participants
+            ],
             summary=(
                 f"{meeting.title} 회의에서는 프로젝트 현황, 다음 실행 항목, "
                 "외부 연동 전 검토 절차를 중심으로 논의했습니다."

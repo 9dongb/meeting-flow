@@ -1,6 +1,5 @@
 import json
 import re
-from datetime import date
 
 import httpx
 from pydantic import ValidationError
@@ -8,6 +7,7 @@ from pydantic import ValidationError
 from app.models.meeting import Meeting
 from app.schemas.analysis import MeetingAnalysisResult
 from app.services.ai.groq_analyzer import AIConfigurationError, AIProviderError, AIResponseParseError
+from app.services.ai.prompts import meeting_analysis_system_prompt, meeting_analysis_user_prompt
 from app.services.rag.schemas import RagAnalysisContext
 
 
@@ -92,54 +92,7 @@ class OpenAIMeetingAnalyzer:
         return content
 
     def _system_prompt(self) -> str:
-        return """
-당신은 회의록을 후속 실행 데이터로 변환하는 신중한 비서인 MeetingFlow AI입니다.
-출력은 JSON만 반환하세요. 마크다운, 주석, 설명 텍스트를 포함하지 마세요.
-확실하지 않은 내용은 추측하지 마세요.
-담당자(assignee)나 마감일(due_date)이 명확하지 않은 경우 null을 사용하세요.
-액션 아이템은 실제 후속 행동이 필요한 항목만 추출하세요.
-단순 논의 내용과 할 일을 구분하세요.
-결정사항과 액션 아이템을 구분하세요.
-source_text에는 원문 근거를 짧게 포함하세요.
-confidence는 0부터 1 사이 숫자로 반환하세요.
-마감일에는 ISO 날짜 형식(YYYY-MM-DD)을 사용하거나 null을 사용하세요.
-JSON은 정확히 다음 형태를 따라야 합니다:
-{
-  "summary": string,
-  "topics": string[],
-  "decisions": [
-    {
-      "content": string,
-      "reason": string | null,
-      "source_text": string | null,
-      "confidence": number
-    }
-  ],
-  "action_items": [
-    {
-      "assignee": string | null,
-      "description": string,
-      "due_date": string | null,
-      "priority": "low" | "medium" | "high",
-      "confidence": number,
-      "source_text": string | null
-    }
-  ],
-  "unresolved_issues": [
-    {
-      "content": string,
-      "owner": string | null,
-      "next_step": string | null,
-      "source_text": string | null
-    }
-  ],
-  "follow_up_email": {
-    "subject": string,
-    "body": string,
-    "recipients": string[]
-  }
-}
-""".strip()
+        return meeting_analysis_system_prompt()
 
     def _user_prompt(
         self,
@@ -147,24 +100,4 @@ JSON은 정확히 다음 형태를 따라야 합니다:
         transcript: str,
         rag_context: RagAnalysisContext | None = None,
     ) -> str:
-        participants = [
-            f"{participant.name} <{participant.email}>"
-            if participant.email
-            else participant.name
-            for participant in meeting.participants
-        ]
-        meeting_date = meeting.meeting_date.isoformat() if isinstance(meeting.meeting_date, date) else None
-        rag_prompt = rag_context.to_prompt_context() if rag_context else "No previous RAG context is available."
-        return f"""
-이 회의록을 분석하세요.
-
-회의 제목: {meeting.title}
-회의 날짜: {meeting_date or "null"}
-참석자: {participants}
-
-이전 회의록 정보:
-{rag_prompt}
-
-회의록:
-{transcript}
-""".strip()
+        return meeting_analysis_user_prompt(meeting, transcript, rag_context)

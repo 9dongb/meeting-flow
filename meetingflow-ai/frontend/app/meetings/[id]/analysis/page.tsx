@@ -90,6 +90,17 @@ function analysisFromMeeting(meeting: Meeting): MeetingAnalysisResult {
   const latestDraft = meeting.follow_up_email_drafts?.at(-1);
 
   return {
+    is_analyzable: Boolean(meeting.summary),
+    analysis_failure_reason: meeting.summary ? null : "아직 분석 결과가 저장되지 않았습니다.",
+    meeting_title: meeting.title,
+    meeting_date: meeting.meeting_date,
+    participants: meeting.participants.map((participant) => ({
+      name: participant.name,
+      email: participant.email,
+      role: null,
+      source_text: null,
+      confidence: 1
+    })),
     summary: meeting.summary || "아직 저장된 요약이 없습니다.",
     topics: [],
     decisions:

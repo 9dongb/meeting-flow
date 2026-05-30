@@ -126,6 +126,17 @@ export interface MeetingUpdatePayload {
 }
 
 export interface MeetingAnalysisResult {
+  is_analyzable: boolean;
+  analysis_failure_reason?: string | null;
+  meeting_title?: string | null;
+  meeting_date?: string | null;
+  participants: Array<{
+    name: string;
+    email?: string | null;
+    role?: string | null;
+    source_text?: string | null;
+    confidence: number;
+  }>;
   summary: string;
   topics: string[];
   decisions: Array<{

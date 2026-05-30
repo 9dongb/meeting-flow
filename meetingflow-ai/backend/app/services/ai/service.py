@@ -1,3 +1,5 @@
+from datetime import date
+
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -5,6 +7,7 @@ from app.models.action_item import ActionItem
 from app.models.decision import Decision
 from app.models.follow_up_email_draft import FollowUpEmailDraft
 from app.models.meeting import Meeting
+from app.models.participant import Participant
 from app.models.unresolved_issue import UnresolvedIssue
 from app.schemas.analysis import MeetingAnalysisResult
 from app.services.ai.base import MeetingAnalyzer
@@ -57,11 +60,28 @@ def analyze_and_persist_meeting(
         else:
             raise MeetingAnalysisUnavailableError(str(exc)) from exc
 
-    meeting.summary = result.summary
+    result = normalize_analysis_result(result)
+
+    if not meeting.meeting_date:
+        meeting.meeting_date = result.meeting_date
+    if not meeting.participants and result.participants:
+        meeting.participants = [
+            Participant(name=participant.name, email=participant.email)
+            for participant in result.participants
+            if participant.name.strip()
+        ]
+
+    meeting.summary = result.summary if result.is_analyzable else None
     meeting.decisions.clear()
     meeting.action_items.clear()
     meeting.unresolved_issues.clear()
     meeting.follow_up_email_drafts.clear()
+
+    if not result.is_analyzable:
+        db.add(meeting)
+        db.commit()
+        db.refresh(meeting)
+        return result
 
     meeting.decisions.extend(
         Decision(
@@ -107,4 +127,17 @@ def analyze_and_persist_meeting(
     rag_service.index_meeting_summary(meeting)
     rag_service.index_decisions(meeting, meeting.decisions)
     rag_service.index_action_items(meeting, meeting.action_items)
+    return result
+
+
+def normalize_analysis_result(result: MeetingAnalysisResult) -> MeetingAnalysisResult:
+    if result.meeting_date is None:
+        result.meeting_date = date.today()
+    if not result.is_analyzable:
+        result.summary = ""
+        result.topics = []
+        result.decisions = []
+        result.action_items = []
+        result.unresolved_issues = []
+        result.participants = []
     return result

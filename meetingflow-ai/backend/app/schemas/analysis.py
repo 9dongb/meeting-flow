@@ -28,6 +28,14 @@ class UnresolvedIssueAnalysis(BaseModel):
     source_text: str | None = None
 
 
+class ParticipantAnalysis(BaseModel):
+    name: str
+    email: str | None = None
+    role: str | None = None
+    source_text: str | None = None
+    confidence: float = Field(ge=0, le=1, default=0.0)
+
+
 class FollowUpEmailAnalysis(BaseModel):
     subject: str
     body: str
@@ -35,6 +43,11 @@ class FollowUpEmailAnalysis(BaseModel):
 
 
 class MeetingAnalysisResult(BaseModel):
+    is_analyzable: bool = True
+    analysis_failure_reason: str | None = None
+    meeting_title: str | None = None
+    meeting_date: date | None = None
+    participants: list[ParticipantAnalysis] = Field(default_factory=list)
     summary: str
     topics: list[str] = Field(default_factory=list)
     decisions: list[DecisionAnalysis] = Field(default_factory=list)

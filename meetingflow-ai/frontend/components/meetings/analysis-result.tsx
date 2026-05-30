@@ -1,14 +1,63 @@
-import { Mail } from "lucide-react";
+import { AlertTriangle, Mail } from "lucide-react";
 
 import { PriorityBadge } from "@/components/meetings/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { confidenceLabel } from "@/lib/utils";
+import { confidenceLabel, formatDate } from "@/lib/utils";
 import type { MeetingAnalysisResult } from "@/types";
 
 export function AnalysisResult({ result }: { result: MeetingAnalysisResult }) {
+  const isAnalyzable = result.is_analyzable ?? true;
+  const participants = result.participants ?? [];
+
+  if (!isAnalyzable) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            분석 불가능한 회의록
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm leading-6 text-slate-600">
+            {result.analysis_failure_reason || "입력이나 맥락이 부족해 요약을 포함한 핵심 항목을 신뢰할 수 없습니다."}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="grid gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>회의 정보</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4 text-sm text-slate-700 md:grid-cols-3">
+          <div>
+            <p className="text-xs font-medium text-slate-500">회의록 제목</p>
+            <p className="mt-1 font-medium">{result.meeting_title || "추출된 제목 없음"}</p>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-slate-500">회의 날짜</p>
+            <p className="mt-1 font-medium">{formatDate(result.meeting_date)}</p>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-slate-500">참석자</p>
+            {participants.length === 0 ? (
+              <p className="mt-1 font-medium">참석자 없음</p>
+            ) : (
+              <p className="mt-1 font-medium">
+                {participants
+                  .map((participant) => participant.name)
+                  .join(", ")}
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>회의 요약</CardTitle>
