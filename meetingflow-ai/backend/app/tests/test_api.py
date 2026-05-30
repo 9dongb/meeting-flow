@@ -12,8 +12,13 @@ from app.services.rag.schemas import RagAnalysisContext
 from app.services.rag.service import get_rag_service
 
 
-def register(client: TestClient, email: str = "user@example.com", password: str = "password123") -> None:
-    response = client.post("/auth/register", json={"email": email, "password": password})
+def register(
+    client: TestClient,
+    email: str = "user@example.com",
+    password: str = "password123",
+    name: str = "테스트 사용자",
+) -> None:
+    response = client.post("/auth/register", json={"name": name, "email": email, "password": password})
     assert response.status_code == 201
 
 
@@ -22,7 +27,11 @@ def login(client: TestClient, email: str = "user@example.com", password: str = "
     assert response.status_code == 200
 
 
-def create_meeting(client: TestClient, title: str = "MVP 스모크 테스트") -> int:
+def create_meeting(
+    client: TestClient,
+    title: str = "MVP 스모크 테스트",
+    participants: list[dict[str, str]] | None = None,
+) -> int:
     response = client.post(
         "/meetings",
         json={
@@ -30,7 +39,7 @@ def create_meeting(client: TestClient, title: str = "MVP 스모크 테스트") -
             "project_name": "MeetingFlow AI",
             "meeting_date": "2026-05-24",
             "transcript": "액션 아이템과 승인 기반 Mock 연동을 확인한다.",
-            "participants": [{"name": "민지"}],
+            "participants": [{"name": "민지"}] if participants is None else participants,
         },
     )
     assert response.status_code == 201
@@ -48,7 +57,12 @@ def test_register_login_and_me(client: TestClient) -> None:
     register(client)
     me_response = client.get("/auth/me")
     assert me_response.status_code == 200
+    assert me_response.json()["name"] == "테스트 사용자"
     assert me_response.json()["email"] == "user@example.com"
+
+    update_response = client.patch("/auth/me", json={"name": "수정된 이름"})
+    assert update_response.status_code == 200
+    assert update_response.json()["name"] == "수정된 이름"
 
     logout_response = client.post("/auth/logout")
     assert logout_response.status_code == 204
@@ -169,6 +183,46 @@ def test_users_in_same_team_share_meetings_and_action_board(client: TestClient) 
     board_response = client.get("/action-items")
     assert board_response.status_code == 200
     assert len(board_response.json()) >= 1
+
+
+def test_analysis_enriches_participant_email_from_team_members(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class ParticipantOnlyAnalyzer:
+        def analyze(self, meeting: Meeting, rag_context: RagAnalysisContext | None = None):
+            return MeetingAnalysisResult(
+                is_analyzable=True,
+                meeting_title="팀 싱크",
+                participants=[
+                    ParticipantAnalysis(name="민지", confidence=0.9),
+                    ParticipantAnalysis(name="준호", confidence=0.9),
+                ],
+                summary="팀 싱크에서 진행 상황을 공유했다.",
+                follow_up_email=FollowUpEmailAnalysis(subject="팀 싱크 정리", body="공유드립니다.", recipients=[]),
+            )
+
+    monkeypatch.setattr(ai_service, "get_meeting_analyzer", lambda: ParticipantOnlyAnalyzer())
+
+    register(client, email="minji@example.com", name="민지")
+    owner_team = client.get("/teams/current").json()
+    client.post("/auth/logout")
+
+    register(client, email="junho@example.com", name="준호")
+    join_response = client.post("/teams/join", json={"invite_code": owner_team["invite_code"]})
+    assert join_response.status_code == 200
+
+    meeting_id = create_meeting(client, title="팀 싱크", participants=[])
+    analysis_response = client.post(f"/meetings/{meeting_id}/analyze")
+    assert analysis_response.status_code == 200
+    participants = analysis_response.json()["participants"]
+    assert {participant["email"] for participant in participants} == {"minji@example.com", "junho@example.com"}
+
+    meeting_response = client.get(f"/meetings/{meeting_id}")
+    assert {participant["email"] for participant in meeting_response.json()["participants"]} == {
+        "minji@example.com",
+        "junho@example.com",
+    }
 
 
 def test_validation_errors(client: TestClient) -> None:

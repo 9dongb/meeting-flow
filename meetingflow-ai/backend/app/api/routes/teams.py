@@ -43,7 +43,7 @@ def to_team_read(db: DbSession, team_id: int, user_id: int) -> TeamRead:
         members=[
             TeamMemberRead(
                 id=user.id,
-                name=user.email.split("@", maxsplit=1)[0],
+                name=user.name,
                 email=user.email,
                 role=membership.role,
                 joined_at=membership.created_at,

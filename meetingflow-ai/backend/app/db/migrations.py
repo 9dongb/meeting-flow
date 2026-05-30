@@ -10,6 +10,17 @@ def run_lightweight_migrations(engine: Engine) -> None:
     inspector = inspect(engine)
     with engine.begin() as connection:
         user_columns = {column["name"] for column in inspector.get_columns("users")}
+        if "name" not in user_columns:
+            connection.execute(text("ALTER TABLE users ADD COLUMN name VARCHAR(120) NOT NULL DEFAULT ''"))
+            connection.execute(
+                text(
+                    """
+                    UPDATE users
+                    SET name = substr(email, 1, instr(email, '@') - 1)
+                    WHERE name = '' AND instr(email, '@') > 1
+                    """
+                )
+            )
         if "active_team_id" not in user_columns:
             connection.execute(text("ALTER TABLE users ADD COLUMN active_team_id INTEGER"))
 

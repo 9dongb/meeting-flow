@@ -48,10 +48,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
-  register(email: string, password: string) {
+  register(name: string, email: string, password: string) {
     return request<AuthResponse>("/auth/register", {
       method: "POST",
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({ name, email, password })
     });
   },
   login(email: string, password: string) {
@@ -62,6 +62,12 @@ export const api = {
   },
   me() {
     return request<AuthResponse["user"]>("/auth/me");
+  },
+  updateMe(name: string) {
+    return request<AuthResponse["user"]>("/auth/me", {
+      method: "PATCH",
+      body: JSON.stringify({ name })
+    });
   },
   logout() {
     return request<void>("/auth/logout", { method: "POST" });

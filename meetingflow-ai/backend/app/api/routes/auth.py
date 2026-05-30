@@ -7,9 +7,9 @@ from app.api.deps import CurrentUser, DbSession
 from app.core.config import get_settings
 from app.core.security import create_access_token
 from app.crud.google_accounts import upsert_google_account
-from app.crud.users import authenticate_user, create_user, get_user_by_email
+from app.crud.users import authenticate_user, create_user, get_user_by_email, update_user_name, user_name_from_email
 from app.schemas.auth import AuthResponse, LoginRequest
-from app.schemas.user import UserCreate, UserRead
+from app.schemas.user import UserCreate, UserRead, UserUpdate
 from app.services.google_oauth import LOGIN_SCOPES, GoogleOAuthError, build_google_auth_url, exchange_code_for_tokens, fetch_google_userinfo
 
 
@@ -69,6 +69,11 @@ def me(current_user: CurrentUser) -> UserRead:
     return UserRead.model_validate(current_user)
 
 
+@router.patch("/me", response_model=UserRead)
+def patch_me(user_in: UserUpdate, db: DbSession, current_user: CurrentUser) -> UserRead:
+    return UserRead.model_validate(update_user_name(db, current_user, user_in.name))
+
+
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 def logout(response: Response) -> None:
     _clear_auth_cookie(response)
@@ -125,7 +130,8 @@ def google_callback(
 
     user = get_user_by_email(db, email)
     if not user:
-        user = create_user(db, UserCreate(email=email, password=secrets.token_urlsafe(32)))
+        name = str(userinfo.get("name") or "").strip() or user_name_from_email(email)
+        user = create_user(db, UserCreate(name=name, email=email, password=secrets.token_urlsafe(32)))
     upsert_google_account(
         db,
         user=user,

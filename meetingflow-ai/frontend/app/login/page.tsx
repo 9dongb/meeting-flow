@@ -14,6 +14,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8
 export default function LoginPage() {
   const router = useRouter();
   const [mode, setMode] = useState<"login" | "register">("login");
+  const [name, setName] = useState("홍길동");
   const [email, setEmail] = useState("demo@meetingflow.ai");
   const [password, setPassword] = useState("password123");
   const [error, setError] = useState("");
@@ -27,7 +28,7 @@ export default function LoginPage() {
       if (mode === "login") {
         await api.login(email, password);
       } else {
-        await api.register(email, password);
+        await api.register(name, email, password);
       }
       router.push("/dashboard");
     } catch (err) {
@@ -60,6 +61,12 @@ export default function LoginPage() {
                 이메일 로그인
                 <span className="h-px flex-1 bg-slate-200" />
               </div>
+              {mode === "register" ? (
+                <label className="block space-y-2 text-sm font-medium">
+                  <span>이름</span>
+                  <Input value={name} onChange={(event) => setName(event.target.value)} required />
+                </label>
+              ) : null}
               <label className="block space-y-2 text-sm font-medium">
                 <span>이메일</span>
                 <Input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />

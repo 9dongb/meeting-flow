@@ -31,7 +31,7 @@ def seed_demo_data() -> None:
     try:
         user = db.scalar(select(User).where(User.email == DEMO_EMAIL))
         if not user:
-            user = User(email=DEMO_EMAIL, hashed_password=get_password_hash(DEMO_PASSWORD))
+            user = User(name="데모 사용자", email=DEMO_EMAIL, hashed_password=get_password_hash(DEMO_PASSWORD))
             db.add(user)
             db.flush()
             team = create_default_team_for_user(db, user)

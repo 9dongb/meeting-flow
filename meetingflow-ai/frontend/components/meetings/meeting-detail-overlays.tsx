@@ -1,40 +1,77 @@
 "use client";
 
 import { Users, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { Participant } from "@/types";
 
 export function ParticipantsPopover({ participants }: { participants: Participant[] }) {
   const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState({ left: 0, top: 0 });
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const participantSummary = formatParticipantSummary(participants);
+  const updatePosition = useCallback(() => {
+    const rect = buttonRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const width = 288;
+    const estimatedHeight = Math.min(320, 88 + participants.length * 56);
+    const belowTop = rect.bottom + 8;
+    const aboveTop = rect.top - estimatedHeight - 8;
+    const top = belowTop + estimatedHeight > window.innerHeight - 16 && aboveTop >= 16 ? aboveTop : belowTop;
+
+    setPosition({
+      left: Math.max(16, Math.min(rect.left, window.innerWidth - width - 16)),
+      top: Math.max(16, top)
+    });
+  }, [participants.length]);
 
   useEffect(() => {
     if (!open) return;
+    updatePosition();
 
     function handleClickOutside(event: MouseEvent) {
+      if (buttonRef.current?.contains(event.target as Node)) return;
       if (popoverRef.current?.contains(event.target as Node)) return;
       setOpen(false);
     }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
 
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [open]);
+    document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open, updatePosition]);
 
   return (
-    <div ref={popoverRef} className="relative">
+    <div className="inline-flex">
       <button
+        ref={buttonRef}
         type="button"
         className="inline-flex items-center gap-1.5 rounded-md text-sm font-medium text-slate-600 transition hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2"
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => {
+          updatePosition();
+          setOpen((current) => !current);
+        }}
         aria-expanded={open}
       >
         <Users className="h-4 w-4" />
         {participantSummary}
       </button>
       {open ? (
-        <div className="ai-card absolute left-0 top-full z-20 mt-2 w-72 rounded-lg border bg-white p-3 text-left shadow-soft">
+        <div
+          ref={popoverRef}
+          className="fixed z-50 w-72 rounded-lg border border-slate-200 bg-white p-3 text-left shadow-lg"
+          style={{ left: position.left, top: position.top }}
+        >
           <p className="mb-2 text-xs font-semibold uppercase text-slate-400">참석자</p>
           {participants.length === 0 ? (
             <p className="text-sm text-slate-500">등록된 참석자가 없습니다.</p>

@@ -48,11 +48,14 @@ export function AnalysisResult({ result }: { result: MeetingAnalysisResult }) {
             {participants.length === 0 ? (
               <p className="mt-1 font-medium">참석자 없음</p>
             ) : (
-              <p className="mt-1 font-medium">
-                {participants
-                  .map((participant) => participant.name)
-                  .join(", ")}
-              </p>
+              <ul className="mt-1 space-y-1">
+                {participants.map((participant, index) => (
+                  <li key={`${participant.name}-${participant.email ?? index}`}>
+                    <p className="font-medium">{participant.name}</p>
+                    {participant.email ? <p className="truncate text-xs text-slate-500">{participant.email}</p> : null}
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         </CardContent>

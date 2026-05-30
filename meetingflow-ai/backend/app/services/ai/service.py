@@ -1,5 +1,6 @@
 from datetime import date
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -8,7 +9,9 @@ from app.models.decision import Decision
 from app.models.follow_up_email_draft import FollowUpEmailDraft
 from app.models.meeting import Meeting
 from app.models.participant import Participant
+from app.models.team_membership import TeamMembership
 from app.models.unresolved_issue import UnresolvedIssue
+from app.models.user import User
 from app.schemas.analysis import MeetingAnalysisResult
 from app.services.ai.base import MeetingAnalyzer
 from app.services.ai.groq_analyzer import AIProviderError, GroqMeetingAnalyzer
@@ -61,15 +64,11 @@ def analyze_and_persist_meeting(
             raise MeetingAnalysisUnavailableError(str(exc)) from exc
 
     result = normalize_analysis_result(result)
+    enrich_participant_emails(db, meeting, result)
 
     if not meeting.meeting_date:
         meeting.meeting_date = result.meeting_date
-    if not meeting.participants and result.participants:
-        meeting.participants = [
-            Participant(name=participant.name, email=participant.email)
-            for participant in result.participants
-            if participant.name.strip()
-        ]
+    sync_meeting_participants_from_analysis(meeting, result)
 
     meeting.summary = result.summary if result.is_analyzable else None
     meeting.decisions.clear()
@@ -141,3 +140,53 @@ def normalize_analysis_result(result: MeetingAnalysisResult) -> MeetingAnalysisR
         result.unresolved_issues = []
         result.participants = []
     return result
+
+
+def enrich_participant_emails(db: Session, meeting: Meeting, result: MeetingAnalysisResult) -> MeetingAnalysisResult:
+    if not meeting.team_id or not result.participants:
+        return result
+
+    members = db.execute(
+        select(User)
+        .join(TeamMembership, TeamMembership.user_id == User.id)
+        .where(TeamMembership.team_id == meeting.team_id)
+    ).scalars().all()
+    email_by_name = unique_team_member_email_by_name(list(members))
+    for participant in result.participants:
+        if participant.email:
+            continue
+        participant.email = email_by_name.get(normalize_person_name(participant.name))
+    return result
+
+
+def unique_team_member_email_by_name(members: list[User]) -> dict[str, str]:
+    candidates: dict[str, set[str]] = {}
+    for member in members:
+        names = {member.name, member.email.split("@", maxsplit=1)[0]}
+        for name in names:
+            normalized = normalize_person_name(name)
+            if not normalized:
+                continue
+            candidates.setdefault(normalized, set()).add(member.email)
+    return {name: next(iter(emails)) for name, emails in candidates.items() if len(emails) == 1}
+
+
+def normalize_person_name(value: str) -> str:
+    return "".join(value.casefold().split())
+
+
+def sync_meeting_participants_from_analysis(meeting: Meeting, result: MeetingAnalysisResult) -> None:
+    if not result.participants:
+        return
+    existing_by_name = {normalize_person_name(participant.name): participant for participant in meeting.participants}
+    for participant in result.participants:
+        normalized = normalize_person_name(participant.name)
+        if not normalized:
+            continue
+        existing = existing_by_name.get(normalized)
+        if existing:
+            if not existing.email and participant.email:
+                existing.email = participant.email
+            continue
+        meeting.participants.append(Participant(name=participant.name, email=participant.email))
+        existing_by_name[normalized] = meeting.participants[-1]

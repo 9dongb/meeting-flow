@@ -3,6 +3,7 @@ export type ActionStatus = "pending" | "in_progress" | "done";
 
 export interface User {
   id: number;
+  name: string;
   email: string;
   active_team_id?: number | null;
   created_at: string;
