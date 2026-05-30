@@ -14,7 +14,7 @@ from app.models.unresolved_issue import UnresolvedIssue
 from app.models.user import User
 from app.schemas.analysis import MeetingAnalysisResult
 from app.services.ai.base import MeetingAnalyzer
-from app.services.ai.groq_analyzer import AIProviderError, GroqMeetingAnalyzer
+from app.services.ai.groq_analyzer import AIConfigurationError, AIProviderError, GroqMeetingAnalyzer
 from app.services.ai.mock_analyzer import MockMeetingAnalyzer
 from app.services.ai.openai_analyzer import OpenAIMeetingAnalyzer
 from app.services.rag.service import get_rag_service
@@ -58,7 +58,7 @@ def analyze_and_persist_meeting(
         result = analyzer.analyze(meeting, rag_context=rag_context)
     except AIProviderError as exc:
         settings = get_settings()
-        if settings.environment.lower() in {"local", "development", "dev"} and settings.ai_mock_fallback:
+        if should_use_mock_fallback(settings, exc):
             result = MockMeetingAnalyzer().analyze(meeting, rag_context=rag_context)
         else:
             raise MeetingAnalysisUnavailableError(str(exc)) from exc
@@ -66,8 +66,9 @@ def analyze_and_persist_meeting(
     result = normalize_analysis_result(result)
     enrich_participant_emails(db, meeting, result)
 
-    if not meeting.meeting_date:
-        meeting.meeting_date = result.meeting_date
+    if result.meeting_title:
+        meeting.title = result.meeting_title
+    meeting.meeting_date = result.meeting_date
     sync_meeting_participants_from_analysis(meeting, result)
 
     meeting.summary = result.summary if result.is_analyzable else None
@@ -111,14 +112,6 @@ def analyze_and_persist_meeting(
         )
         for issue in result.unresolved_issues
     )
-    meeting.follow_up_email_drafts.append(
-        FollowUpEmailDraft(
-            subject=result.follow_up_email.subject,
-            body=result.follow_up_email.body,
-            recipients=result.follow_up_email.recipients,
-        )
-    )
-
     db.add(meeting)
     db.commit()
     db.refresh(meeting)
@@ -143,7 +136,7 @@ def generate_and_persist_follow_up_email_draft(
         result = generate_email(meeting)
     except AIProviderError as exc:
         settings = get_settings()
-        if settings.environment.lower() in {"local", "development", "dev"} and settings.ai_mock_fallback:
+        if should_use_mock_fallback(settings, exc):
             result = MockMeetingAnalyzer().generate_follow_up_email(meeting)
         else:
             raise MeetingAnalysisUnavailableError(str(exc)) from exc
@@ -158,6 +151,14 @@ def generate_and_persist_follow_up_email_draft(
     db.commit()
     db.refresh(draft)
     return draft
+
+
+def should_use_mock_fallback(settings, exc: AIProviderError) -> bool:
+    return (
+        settings.environment.lower() in {"local", "development", "dev"}
+        and settings.ai_mock_fallback
+        and isinstance(exc, AIConfigurationError)
+    )
 
 
 def normalize_analysis_result(result: MeetingAnalysisResult) -> MeetingAnalysisResult:

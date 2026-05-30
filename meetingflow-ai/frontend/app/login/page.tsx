@@ -117,7 +117,7 @@ export default function LoginPage() {
             </p>
           </div>
           <div className="rounded-md border border-border bg-white shadow-sm">
-            <div className="border-b border-border bg-slate-50 px-5 py-4">
+            <div className="border-b border-border bg-[#fbfbfc] px-5 py-4">
               <p className="text-sm font-semibold text-slate-950">제품 주간 싱크</p>
               <p className="mt-1 text-xs text-slate-500">2026.05.31 · 참석자 5명 · 분석 완료</p>
             </div>
@@ -128,7 +128,7 @@ export default function LoginPage() {
                 { label: "메일 초안", value: "1", icon: Mail }
               ].map((item) => (
                 <div key={item.label} className="px-5 py-5">
-                  <item.icon className="h-4 w-4 text-[#0f6cbd]" />
+                  <item.icon className="h-4 w-4 text-[#5e6ad2]" />
                   <p className="mt-4 text-2xl font-semibold text-slate-950">{item.value}</p>
                   <p className="mt-1 text-sm text-slate-500">{item.label}</p>
                 </div>

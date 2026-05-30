@@ -6,6 +6,7 @@ import type {
   GoogleCalendarStatus,
   MarkdownExportResponse,
   Meeting,
+  MeetingAnalysisUpdatePayload,
   MeetingAnalysisResult,
   MeetingCreatePayload,
   MeetingUpdatePayload,
@@ -113,6 +114,12 @@ export const api = {
   },
   updateMeeting(id: number, payload: MeetingUpdatePayload) {
     return request<Meeting>(`/meetings/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload)
+    });
+  },
+  updateMeetingAnalysis(id: number, payload: MeetingAnalysisUpdatePayload) {
+    return request<Meeting>(`/meetings/${id}/analysis`, {
       method: "PATCH",
       body: JSON.stringify(payload)
     });

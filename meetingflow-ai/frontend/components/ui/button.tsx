@@ -6,8 +6,8 @@ type ButtonVariant = "default" | "secondary" | "ghost" | "danger";
 
 const variants: Record<ButtonVariant, string> = {
   default: "ai-button-primary",
-  secondary: "border border-border bg-white text-slate-900 shadow-sm hover:bg-slate-50",
-  ghost: "text-slate-700 hover:bg-slate-100",
+  secondary: "border border-border bg-white text-slate-900 shadow-sm hover:bg-[#f7f7f8]",
+  ghost: "text-slate-700 hover:bg-[#f0f0f2]",
   danger: "bg-red-600 text-white shadow-sm hover:bg-red-700"
 };
 

@@ -141,7 +141,7 @@ function KanbanColumn({
   return (
     <Card
       className={`${status === "done" ? "bg-slate-50" : ""} ${
-        isDragOver ? "border-blue-300 shadow-[0_18px_50px_rgba(15,108,189,0.16)]" : ""
+        isDragOver ? "border-indigo-300 shadow-[0_14px_32px_rgba(94,106,210,0.14)]" : ""
       }`}
       onDragOver={onDragOver}
       onDrop={onDrop}
@@ -224,14 +224,14 @@ function ActionItemCard({
       }}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      className="cursor-pointer rounded-md border border-border bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md active:cursor-grabbing"
+      className="cursor-pointer rounded-md border border-border bg-white p-3 shadow-sm transition hover:border-slate-300 hover:bg-[#fbfbfc] hover:shadow-md active:cursor-grabbing"
     >
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
         <p className="line-clamp-3 min-h-10 text-sm font-medium leading-5">{item.description}</p>
         <div className="relative">
           <button
             type="button"
-            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-white hover:text-slate-900"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-[#f0f0f2] hover:text-slate-900"
             aria-label="액션 아이템 더보기"
             onClick={(event) => {
               event.preventDefault();

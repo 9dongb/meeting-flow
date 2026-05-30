@@ -7,7 +7,7 @@ from app.main import app
 from app.models.meeting import Meeting
 from app.schemas.analysis import FollowUpEmailAnalysis, MeetingAnalysisResult, ParticipantAnalysis
 from app.services.ai import service as ai_service
-from app.services.ai.groq_analyzer import AIProviderError
+from app.services.ai.groq_analyzer import AIConfigurationError, AIProviderError
 from app.services.rag.schemas import RagAnalysisContext
 from app.services.rag.service import get_rag_service
 
@@ -116,11 +116,44 @@ def test_create_get_analyze_and_update_action_item(client: TestClient) -> None:
     assert analysis["meeting_date"] == "2026-05-24"
     assert "action_items" in analysis
 
+    analyzed_meeting_response = client.get(f"/meetings/{meeting_id}")
+    assert analyzed_meeting_response.status_code == 200
+    assert analyzed_meeting_response.json()["title"] == "MVP 스모크 테스트"
+    assert analyzed_meeting_response.json()["meeting_date"] == "2026-05-24"
+    assert analyzed_meeting_response.json()["follow_up_email_drafts"] == []
+
     draft_response = client.post(f"/meetings/{meeting_id}/follow-up-email-draft")
     assert draft_response.status_code == 200
     draft = draft_response.json()
     assert draft["subject"].startswith("[후속 공유]")
     assert "액션 아이템" in draft["body"]
+
+    analysis_update_response = client.patch(
+        f"/meetings/{meeting_id}/analysis",
+        json={
+            "title": "LLM 회의 제목 수정",
+            "meeting_date": "2026-05-25",
+            "summary": "수정된 분석 요약입니다.",
+            "participants": [{"name": "민지", "email": "minji@example.com"}],
+            "decisions": [{"content": "수정된 결정사항", "confidence": 0.95}],
+            "action_items": [
+                {
+                    "assignee": "민지",
+                    "description": "수정된 액션 아이템",
+                    "due_date": "2026-05-31",
+                    "priority": "high",
+                    "status": "pending",
+                    "confidence": 0.9,
+                }
+            ],
+            "unresolved_issues": [{"content": "수정된 확인 사항", "owner": "민지", "next_step": "다음 회의 확인"}],
+        },
+    )
+    assert analysis_update_response.status_code == 200
+    updated_analysis = analysis_update_response.json()
+    assert updated_analysis["title"] == "LLM 회의 제목 수정"
+    assert updated_analysis["summary"] == "수정된 분석 요약입니다."
+    assert updated_analysis["decisions"][0]["content"] == "수정된 결정사항"
 
     action_items_response = client.get(f"/meetings/{meeting_id}/action-items")
     assert action_items_response.status_code == 200
@@ -131,7 +164,7 @@ def test_create_get_analyze_and_update_action_item(client: TestClient) -> None:
     assert board_response.status_code == 200
     board_items = board_response.json()
     assert len(board_items) >= 1
-    assert board_items[0]["meeting_title"] == "MVP 스모크 테스트"
+    assert board_items[0]["meeting_title"] == "LLM 회의 제목 수정"
 
     action_item_id = action_items[0]["id"]
     update_response = client.patch(
@@ -255,6 +288,17 @@ def test_ai_analysis_failure_without_fallback(monkeypatch: pytest.MonkeyPatch) -
     meeting = Meeting(id=1, user_id=1, title="Failure", transcript="회의 내용")
     with pytest.raises(ai_service.MeetingAnalysisUnavailableError):
         ai_service.analyze_and_persist_meeting(db=None, meeting=meeting, analyzer=FailingAnalyzer())  # type: ignore[arg-type]
+
+
+def test_mock_fallback_only_for_missing_configuration() -> None:
+    settings = SimpleNamespace(environment="local", ai_mock_fallback=True)
+
+    assert ai_service.should_use_mock_fallback(settings, AIConfigurationError("GROQ_API_KEY is not configured."))
+    assert not ai_service.should_use_mock_fallback(settings, AIProviderError("Groq API returned 401"))
+    assert not ai_service.should_use_mock_fallback(
+        SimpleNamespace(environment="production", ai_mock_fallback=True),
+        AIConfigurationError("GROQ_API_KEY is not configured."),
+    )
 
 
 def test_analysis_result_uses_today_when_llm_returns_no_date() -> None:

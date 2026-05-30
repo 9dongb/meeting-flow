@@ -7,10 +7,13 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.db.session import Base, get_db
 from app.main import app
+from app.services.ai import service as ai_service
+from app.services.ai.mock_analyzer import MockMeetingAnalyzer
 
 
 @pytest.fixture()
-def client(tmp_path) -> Generator[TestClient, None, None]:
+def client(tmp_path, monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient, None, None]:
+    monkeypatch.setattr(ai_service, "get_meeting_analyzer", lambda: MockMeetingAnalyzer())
     test_db_url = f"sqlite:///{tmp_path}/test.db"
     engine = create_engine(test_db_url, connect_args={"check_same_thread": False})
     testing_session = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)

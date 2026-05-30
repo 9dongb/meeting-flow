@@ -106,7 +106,7 @@ export default function NewMeetingPage() {
           <button className="text-left" onClick={() => selectMode("manual")}>
             <Card className="h-full transition hover:-translate-y-0.5 hover:border-slate-400">
               <CardHeader>
-                <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-md border border-blue-100 bg-blue-50 text-[#0f6cbd]">
+                <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-md border border-indigo-100 bg-indigo-50 text-[#5e6ad2]">
                   <Keyboard className="h-5 w-5" />
                 </div>
                 <CardTitle>직접 작성</CardTitle>
@@ -122,7 +122,7 @@ export default function NewMeetingPage() {
           <button className="text-left" onClick={() => selectMode("upload")}>
             <Card className="h-full transition hover:-translate-y-0.5 hover:border-slate-400">
               <CardHeader>
-                <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-md border border-blue-100 bg-blue-50 text-[#0f6cbd]">
+                <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-md border border-indigo-100 bg-indigo-50 text-[#5e6ad2]">
                   <Upload className="h-5 w-5" />
                 </div>
                 <CardTitle>파일 업로드</CardTitle>
@@ -194,7 +194,7 @@ export default function NewMeetingPage() {
               ) : (
                 <label className="block rounded-md border border-dashed border-border bg-white p-5 shadow-sm">
                   <div className="flex flex-col items-center text-center">
-                    <div className="mb-3 rounded-md border border-blue-100 bg-blue-50 p-3 text-[#0f6cbd]">
+                    <div className="mb-3 rounded-md border border-indigo-100 bg-indigo-50 p-3 text-[#5e6ad2]">
                       <FileText className="h-6 w-6" />
                     </div>
                     <p className="text-sm font-medium">회의록 파일 업로드</p>

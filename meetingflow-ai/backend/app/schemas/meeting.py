@@ -70,6 +70,88 @@ class FollowUpEmailDraftRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class DecisionAnalysisUpdate(BaseModel):
+    content: str = Field(min_length=1)
+    reason: str | None = None
+    source_text: str | None = None
+    confidence: float = Field(default=1.0, ge=0, le=1)
+
+    @field_validator("content")
+    @classmethod
+    def strip_decision_content(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Decision content is required")
+        return value
+
+
+class ActionItemAnalysisUpdate(BaseModel):
+    assignee: str | None = Field(default=None, max_length=120)
+    description: str = Field(min_length=1)
+    due_date: date | None = None
+    priority: ActionPriority = ActionPriority.medium
+    status: ActionStatus = ActionStatus.pending
+    confidence: float = Field(default=1.0, ge=0, le=1)
+    source_text: str | None = None
+
+    @field_validator("description")
+    @classmethod
+    def strip_action_description(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Action item description is required")
+        return value
+
+    @field_validator("assignee")
+    @classmethod
+    def strip_action_assignee(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        value = value.strip()
+        return value or None
+
+
+class UnresolvedIssueAnalysisUpdate(BaseModel):
+    content: str = Field(min_length=1)
+    owner: str | None = Field(default=None, max_length=120)
+    next_step: str | None = None
+    source_text: str | None = None
+
+    @field_validator("content")
+    @classmethod
+    def strip_issue_content(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Issue content is required")
+        return value
+
+    @field_validator("owner")
+    @classmethod
+    def strip_issue_owner(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        value = value.strip()
+        return value or None
+
+
+class MeetingAnalysisUpdate(BaseModel):
+    title: str = Field(min_length=1, max_length=255)
+    meeting_date: date | None = None
+    summary: str = Field(default="", max_length=200000)
+    participants: list[ParticipantCreate] = Field(default_factory=list)
+    decisions: list[DecisionAnalysisUpdate] = Field(default_factory=list)
+    action_items: list[ActionItemAnalysisUpdate] = Field(default_factory=list)
+    unresolved_issues: list[UnresolvedIssueAnalysisUpdate] = Field(default_factory=list)
+
+    @field_validator("title")
+    @classmethod
+    def strip_analysis_title(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Meeting title is required")
+        return value
+
+
 class MeetingCreate(BaseModel):
     title: str = Field(min_length=1, max_length=255)
     project_name: str | None = Field(default=None, max_length=255)

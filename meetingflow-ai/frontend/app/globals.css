@@ -3,20 +3,18 @@
 @tailwind utilities;
 
 :root {
-  --background: 210 33% 98%;
-  --foreground: 222 28% 11%;
-  --muted: 210 28% 94%;
-  --muted-foreground: 215 13% 39%;
+  --background: 240 20% 98%;
+  --foreground: 240 10% 7%;
+  --muted: 240 8% 94%;
+  --muted-foreground: 240 4% 42%;
   --card: 0 0% 100%;
-  --border: 214 24% 87%;
-  --primary: 207 78% 36%;
+  --border: 240 8% 88%;
+  --primary: 237 52% 60%;
   --primary-foreground: 0 0% 100%;
-  --ai-blue: #0f6cbd;
-  --ai-cyan: #0f766e;
-  --ai-green: #14804a;
-  --ai-yellow: #b7791f;
-  --ai-red: #c2410c;
-  --ai-violet: #4f46e5;
+  --linear-accent: #5e6ad2;
+  --linear-accent-dark: #4f58c4;
+  --linear-surface: #f7f7f8;
+  --linear-sidebar: #f4f4f5;
 }
 
 * {
@@ -44,15 +42,15 @@ select {
 
 .work-surface {
   background:
-    linear-gradient(180deg, #f8fafc 0%, #f4f7fb 46%, #eef3f8 100%);
+    linear-gradient(180deg, #fbfbfc 0%, #f6f6f7 100%);
 }
 
 .ai-card {
   position: relative;
   overflow: hidden;
-  border-color: hsl(var(--border));
-  background: hsl(var(--card));
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 14px 34px rgba(59, 72, 90, 0.06);
+  border-color: #e6e6e8;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(16, 16, 18, 0.04);
 }
 
 .ai-card::before {
@@ -64,13 +62,15 @@ select {
 }
 
 .ai-topbar {
-  border-color: hsl(var(--border));
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
+  border-color: #e6e6e8;
+  background: rgba(250, 250, 251, 0.92);
+  box-shadow: 0 1px 0 rgba(16, 16, 18, 0.04);
+  backdrop-filter: blur(12px);
 }
 
 .ai-brand-mark {
-  background: linear-gradient(135deg, #0f6cbd, #2454a6);
+  background: linear-gradient(135deg, #6e75dc, #4f58c4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
 .ai-gradient-text {
@@ -78,19 +78,19 @@ select {
 }
 
 .ai-button-primary {
-  background: #0f6cbd;
-  box-shadow: 0 1px 1px rgba(15, 23, 42, 0.08), 0 8px 18px rgba(15, 108, 189, 0.18);
+  background: #5e6ad2;
+  box-shadow: 0 1px 1px rgba(16, 16, 18, 0.08);
   color: white;
 }
 
 .ai-button-primary:hover {
-  background: #0c5ea8;
+  background: #4f58c4;
 }
 
 .ai-pill {
-  border: 1px solid hsl(var(--border));
+  border: 1px solid #e6e6e8;
   background: #fff;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 1px 2px rgba(16, 16, 18, 0.04);
 }
 
 .ai-loader {
@@ -98,14 +98,14 @@ select {
   height: 0.5rem;
   overflow: hidden;
   border-radius: 999px;
-  background: #e2e8f0;
+  background: #ececef;
 }
 
 .ai-loader::after {
   position: absolute;
   inset: 0;
   content: "";
-  background: linear-gradient(90deg, transparent, #0f6cbd, #0f766e, transparent);
+  background: linear-gradient(90deg, transparent, #5e6ad2, #8b90e8, transparent);
   transform: translateX(-70%);
   animation: ai-loader-sweep 1.65s ease-in-out infinite;
 }

@@ -1,10 +1,24 @@
 from fastapi import APIRouter, HTTPException, status
 
 from app.api.deps import CurrentUser, DbSession
-from app.crud.meetings import create_meeting, delete_meeting, get_meeting, list_meetings, update_meeting
+from app.crud.meetings import (
+    create_meeting,
+    delete_meeting,
+    get_meeting,
+    list_meetings,
+    update_meeting,
+    update_meeting_analysis,
+)
 from app.crud.teams import get_active_team
 from app.schemas.analysis import MeetingAnalysisResult
-from app.schemas.meeting import FollowUpEmailDraftRead, MeetingCreate, MeetingDetail, MeetingRead, MeetingUpdate
+from app.schemas.meeting import (
+    FollowUpEmailDraftRead,
+    MeetingAnalysisUpdate,
+    MeetingCreate,
+    MeetingDetail,
+    MeetingRead,
+    MeetingUpdate,
+)
 from app.services.ai.service import (
     MeetingAnalysisUnavailableError,
     analyze_and_persist_meeting,
@@ -66,6 +80,25 @@ def patch_meeting(
     if not meeting:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found")
     return update_meeting(db, meeting, meeting_in)
+
+
+@router.patch("/{meeting_id}/analysis", response_model=MeetingDetail)
+def patch_meeting_analysis(
+    meeting_id: int,
+    analysis_in: MeetingAnalysisUpdate,
+    db: DbSession,
+    current_user: CurrentUser,
+) -> MeetingDetail:
+    team = get_active_team(db, current_user)
+    meeting = get_meeting(db, meeting_id, team.id)
+    if not meeting:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found")
+    updated = update_meeting_analysis(db, meeting, analysis_in)
+    try:
+        GoogleCalendarSyncService().sync_meeting_action_items(db, current_user.id, updated)
+    except GoogleCalendarSyncError:
+        pass
+    return updated
 
 
 @router.post("/{meeting_id}/analyze", response_model=MeetingAnalysisResult)

@@ -333,7 +333,7 @@ function AvatarStack({ members, totalCount }: { members: TeamMember[]; totalCoun
           <button
             key={member.id}
             type="button"
-            className={`flex h-9 w-9 items-center justify-center rounded-full border-2 border-white text-xs font-semibold shadow-sm transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[#0f6cbd] ${avatarStyles[index % avatarStyles.length]}`}
+            className={`flex h-9 w-9 items-center justify-center rounded-full border-2 border-white text-xs font-semibold shadow-sm transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[#5e6ad2] ${avatarStyles[index % avatarStyles.length]}`}
             title={`${member.name} · ${member.email}`}
             onClick={() => setSelectedMember((current) => (current?.id === member.id ? null : member))}
           >
@@ -343,7 +343,7 @@ function AvatarStack({ members, totalCount }: { members: TeamMember[]; totalCoun
         {hiddenCount > 0 ? (
           <button
             type="button"
-            className="flex h-9 min-w-9 items-center justify-center rounded-full border-2 border-white bg-slate-900 px-2 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[#0f6cbd]"
+            className="flex h-9 min-w-9 items-center justify-center rounded-full border-2 border-white bg-slate-900 px-2 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[#5e6ad2]"
             title={`${hiddenCount}명 더 있음`}
             onClick={() => setSelectedMember(null)}
           >
@@ -605,7 +605,7 @@ function Metric({ title, value, icon }: { title: string; value: number; icon: Re
           <p className="text-sm text-slate-500">{title}</p>
           <p className="mt-2 text-2xl font-semibold">{value}</p>
         </div>
-        <div className="rounded-md border border-blue-100 bg-blue-50 p-2 text-[#0f6cbd]">{icon}</div>
+        <div className="rounded-md border border-indigo-100 bg-indigo-50 p-2 text-[#5e6ad2]">{icon}</div>
       </CardContent>
     </Card>
   );

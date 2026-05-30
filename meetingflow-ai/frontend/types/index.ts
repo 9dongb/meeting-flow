@@ -126,6 +126,34 @@ export interface MeetingUpdatePayload {
   participants?: Array<{ name: string; email?: string | null }>;
 }
 
+export interface MeetingAnalysisUpdatePayload {
+  title: string;
+  meeting_date?: string | null;
+  summary: string;
+  participants: Array<{ name: string; email?: string | null }>;
+  decisions: Array<{
+    content: string;
+    reason?: string | null;
+    source_text?: string | null;
+    confidence: number;
+  }>;
+  action_items: Array<{
+    assignee?: string | null;
+    description: string;
+    due_date?: string | null;
+    priority: ActionPriority;
+    status: ActionStatus;
+    confidence: number;
+    source_text?: string | null;
+  }>;
+  unresolved_issues: Array<{
+    content: string;
+    owner?: string | null;
+    next_step?: string | null;
+    source_text?: string | null;
+  }>;
+}
+
 export interface MeetingAnalysisResult {
   is_analyzable: boolean;
   analysis_failure_reason?: string | null;
