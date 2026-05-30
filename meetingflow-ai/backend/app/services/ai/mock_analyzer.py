@@ -87,3 +87,52 @@ class MockMeetingAnalyzer:
                 recipients=[],
             ),
         )
+
+    def generate_follow_up_email(self, meeting: Meeting) -> FollowUpEmailAnalysis:
+        recipients = sorted(
+            {
+                participant.email
+                for participant in meeting.participants
+                if participant.email and "@" in participant.email
+            }
+        )
+        meeting_date = (
+            f"{meeting.meeting_date.year}년 {meeting.meeting_date.month}월 {meeting.meeting_date.day}일"
+            if meeting.meeting_date
+            else "일정 미정일"
+        )
+        decision_lines = [
+            f"- {decision.content}"
+            for decision in meeting.decisions
+        ]
+        action_lines = [
+            f"- {item.description} (담당: {item.assignee or '미정'}, 마감: {item.due_date or '미정'})"
+            for item in meeting.action_items
+            if item.status != "done"
+        ]
+        issue_lines = [
+            f"- {issue.content}"
+            for issue in meeting.unresolved_issues
+        ]
+        body = (
+            "안녕하세요.\n\n"
+            f"{meeting_date} 진행된 {meeting.title} 회의 내용을 아래와 같이 공유드립니다.\n\n"
+            "1. 주요 회의 내용\n\n"
+            f"{meeting.summary or '저장된 요약이 없습니다.'}\n\n"
+            "2. 주요 결정사항\n\n"
+            f"{chr(10).join(decision_lines) if decision_lines else '- 주요 결정사항이 없습니다.'}\n\n"
+            "3. 후속 액션 아이템\n\n"
+            f"{chr(10).join(action_lines) if action_lines else '- 진행 중인 액션 아이템이 없습니다.'}\n\n"
+            "4. 추가 확인 필요사항\n\n"
+            f"{chr(10).join(issue_lines) if issue_lines else '- 추가 확인 필요사항이 없습니다.'}\n\n"
+            "5. 다음 일정\n\n"
+            "다음 회의 일정은 아직 확정되지 않았습니다.\n"
+            "각 담당자는 회의 전까지 본인 액션 아이템 진행 상황을 공유 부탁드립니다.\n\n"
+            "내용 확인 후 수정이나 누락된 부분이 있으면 공유 부탁드립니다.\n\n"
+            "감사합니다."
+        )
+        return FollowUpEmailAnalysis(
+            subject=f"[후속 공유] {meeting.title} 회의 정리",
+            body=body,
+            recipients=recipients,
+        )

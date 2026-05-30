@@ -97,6 +97,7 @@ def test_protected_routes_require_authentication(client: TestClient) -> None:
     assert client.post("/meetings", json={"title": "No Auth"}).status_code == 401
     assert client.get("/meetings/1").status_code == 401
     assert client.post("/meetings/1/analyze").status_code == 401
+    assert client.post("/meetings/1/follow-up-email-draft").status_code == 401
     assert client.get("/meetings/1/action-items").status_code == 401
 
 
@@ -114,6 +115,12 @@ def test_create_get_analyze_and_update_action_item(client: TestClient) -> None:
     assert analysis["is_analyzable"] is True
     assert analysis["meeting_date"] == "2026-05-24"
     assert "action_items" in analysis
+
+    draft_response = client.post(f"/meetings/{meeting_id}/follow-up-email-draft")
+    assert draft_response.status_code == 200
+    draft = draft_response.json()
+    assert draft["subject"].startswith("[후속 공유]")
+    assert "액션 아이템" in draft["body"]
 
     action_items_response = client.get(f"/meetings/{meeting_id}/action-items")
     assert action_items_response.status_code == 200

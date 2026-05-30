@@ -11,16 +11,20 @@ import { Button } from "@/components/ui/button";
 import { EmptyState, Feedback, LoadingState } from "@/components/ui/feedback";
 import { api } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
-import type { Meeting, MeetingAnalysisResult } from "@/types";
+import type { FollowUpEmailDraft, Meeting, MeetingAnalysisResult } from "@/types";
 
 export default function MeetingAnalysisPage() {
   const params = useParams<{ id: string }>();
   const meetingId = Number(params.id);
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [storedAnalysis, setStoredAnalysis] = useState<MeetingAnalysisResult | null>(null);
+  const [latestEmailDraft, setLatestEmailDraft] = useState<FollowUpEmailDraft | null>(null);
   const [showTranscriptModal, setShowTranscriptModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [generatingEmailDraft, setGeneratingEmailDraft] = useState(false);
   const [error, setError] = useState("");
+  const [draftError, setDraftError] = useState("");
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     if (!meetingId) return;
@@ -42,10 +46,41 @@ export default function MeetingAnalysisPage() {
   }, [meetingId]);
 
   const result = useMemo(() => {
-    if (storedAnalysis) return storedAnalysis;
-    if (!meeting) return null;
-    return analysisFromMeeting(meeting);
-  }, [meeting, storedAnalysis]);
+    const baseResult = storedAnalysis ?? (meeting ? analysisFromMeeting(meeting) : null);
+    if (!baseResult || !latestEmailDraft) return baseResult;
+    return {
+      ...baseResult,
+      follow_up_email: {
+        subject: latestEmailDraft.subject,
+        body: latestEmailDraft.body,
+        recipients: latestEmailDraft.recipients ?? []
+      }
+    };
+  }, [latestEmailDraft, meeting, storedAnalysis]);
+
+  async function generateEmailDraft() {
+    if (!meetingId) return;
+    setGeneratingEmailDraft(true);
+    setDraftError("");
+    setMessage("");
+    try {
+      const draft = await api.generateFollowUpEmailDraft(meetingId);
+      setLatestEmailDraft(draft);
+      setMeeting((current) =>
+        current
+          ? {
+              ...current,
+              follow_up_email_drafts: [...(current.follow_up_email_drafts ?? []), draft]
+            }
+          : current
+      );
+      setMessage("후속 이메일 초안을 새로 작성했습니다.");
+    } catch (err) {
+      setDraftError(err instanceof Error ? err.message : "후속 이메일 초안 작성에 실패했습니다.");
+    } finally {
+      setGeneratingEmailDraft(false);
+    }
+  }
 
   return (
     <AppShell>
@@ -57,6 +92,8 @@ export default function MeetingAnalysisPage() {
         <EmptyState title="분석 결과를 찾을 수 없습니다." description="회의가 삭제되었거나 접근 권한이 없습니다." />
       ) : (
         <div className="space-y-6">
+          {message ? <Feedback variant="success">{message}</Feedback> : null}
+          {draftError ? <Feedback variant="error">{draftError}</Feedback> : null}
           <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
             <div>
               <p className="text-sm font-medium text-slate-500">Analysis Result</p>
@@ -75,7 +112,11 @@ export default function MeetingAnalysisPage() {
             </div>
           </div>
 
-          <AnalysisResult result={result} />
+          <AnalysisResult
+            result={result}
+            generatingEmailDraft={generatingEmailDraft}
+            onGenerateEmailDraft={generateEmailDraft}
+          />
 
           {showTranscriptModal ? (
             <TranscriptModal transcript={meeting.transcript} onClose={() => setShowTranscriptModal(false)} />

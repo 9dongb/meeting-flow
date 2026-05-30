@@ -129,6 +129,37 @@ def analyze_and_persist_meeting(
     return result
 
 
+def generate_and_persist_follow_up_email_draft(
+    db: Session,
+    meeting: Meeting,
+    analyzer: MeetingAnalyzer | None = None,
+) -> FollowUpEmailDraft:
+    analyzer = analyzer or get_meeting_analyzer()
+    generate_email = getattr(analyzer, "generate_follow_up_email", None)
+    if not callable(generate_email):
+        raise MeetingAnalysisUnavailableError("configured analyzer cannot generate follow-up email drafts")
+
+    try:
+        result = generate_email(meeting)
+    except AIProviderError as exc:
+        settings = get_settings()
+        if settings.environment.lower() in {"local", "development", "dev"} and settings.ai_mock_fallback:
+            result = MockMeetingAnalyzer().generate_follow_up_email(meeting)
+        else:
+            raise MeetingAnalysisUnavailableError(str(exc)) from exc
+
+    draft = FollowUpEmailDraft(
+        subject=result.subject,
+        body=result.body,
+        recipients=result.recipients,
+    )
+    meeting.follow_up_email_drafts.append(draft)
+    db.add(meeting)
+    db.commit()
+    db.refresh(draft)
+    return draft
+
+
 def normalize_analysis_result(result: MeetingAnalysisResult) -> MeetingAnalysisResult:
     if result.meeting_date is None:
         result.meeting_date = date.today()

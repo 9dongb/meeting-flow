@@ -37,6 +37,7 @@ export default function DashboardPage() {
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [editingMeetingId, setEditingMeetingId] = useState<number | null>(null);
   const [savingMeetingId, setSavingMeetingId] = useState<number | null>(null);
+  const [dueDateFilter, setDueDateFilter] = useState<string | null>(null);
 
   const loadDashboard = useCallback(() => {
     setLoading(true);
@@ -64,9 +65,29 @@ export default function DashboardPage() {
         .slice(0, 5),
     [actionItems]
   );
+  const filteredActionItems = useMemo(
+    () =>
+      dueDateFilter
+        ? actionItems.filter((item) => item.status !== "done" && item.due_date === dueDateFilter)
+        : actionItems,
+    [actionItems, dueDateFilter]
+  );
   const activeCount = actionItems.filter((item) => item.status !== "done").length;
   const doneCount = actionItems.filter((item) => item.status === "done").length;
   const highPriorityCount = actionItems.filter((item) => item.status !== "done" && item.priority === "high").length;
+  const filteredCount = filteredActionItems.length;
+  const nearestDueDate = dueSoon[0]?.due_date ?? null;
+  const nearestDueCount = nearestDueDate
+    ? actionItems.filter((item) => item.status !== "done" && item.due_date === nearestDueDate).length
+    : 0;
+
+  useEffect(() => {
+    if (!dueDateFilter) return;
+    const stillHasMatchingDueDate = actionItems.some((item) => item.status !== "done" && item.due_date === dueDateFilter);
+    if (!stillHasMatchingDueDate) {
+      setDueDateFilter(null);
+    }
+  }, [actionItems, dueDateFilter]);
 
   async function updateActionStatus(item: ActionItemWithMeeting, status: ActionStatus) {
     setUpdatingId(item.id);
@@ -163,6 +184,10 @@ export default function DashboardPage() {
               team={team}
               dueSoon={dueSoon}
               activeCount={activeCount}
+              dueDateFilter={dueDateFilter}
+              filteredCount={filteredCount}
+              nearestDueCount={nearestDueCount}
+              onToggleDueDateFilter={(dueDate) => setDueDateFilter((current) => (current === dueDate ? null : dueDate))}
             />
           </div>
           {loading ? (
@@ -176,7 +201,7 @@ export default function DashboardPage() {
             </Card>
           ) : (
             <ActionKanbanBoard
-              items={actionItems}
+              items={filteredActionItems}
               updatingId={updatingId}
               onStatusChange={updateActionStatus}
               onDelete={deleteActionItem}
@@ -249,11 +274,19 @@ export default function DashboardPage() {
 function BoardContextBar({
   team,
   dueSoon,
-  activeCount
+  activeCount,
+  dueDateFilter,
+  filteredCount,
+  nearestDueCount,
+  onToggleDueDateFilter
 }: {
   team: Team | null;
   dueSoon: ActionItemWithMeeting[];
   activeCount: number;
+  dueDateFilter: string | null;
+  filteredCount: number;
+  nearestDueCount: number;
+  onToggleDueDateFilter: (dueDate: string) => void;
 }) {
   const totalMemberCount = team?.member_count ?? 0;
 
@@ -268,7 +301,14 @@ function BoardContextBar({
           </p>
         </div>
       </div>
-      <DueSoonSummary dueSoon={dueSoon} activeCount={activeCount} />
+      <DueSoonSummary
+        dueSoon={dueSoon}
+        activeCount={activeCount}
+        dueDateFilter={dueDateFilter}
+        filteredCount={filteredCount}
+        nearestDueCount={nearestDueCount}
+        onToggleDueDateFilter={onToggleDueDateFilter}
+      />
     </div>
   );
 }
@@ -329,8 +369,23 @@ function AvatarStack({ members, totalCount }: { members: TeamMember[]; totalCoun
   );
 }
 
-function DueSoonSummary({ dueSoon, activeCount }: { dueSoon: ActionItemWithMeeting[]; activeCount: number }) {
+function DueSoonSummary({
+  dueSoon,
+  activeCount,
+  dueDateFilter,
+  filteredCount,
+  nearestDueCount,
+  onToggleDueDateFilter
+}: {
+  dueSoon: ActionItemWithMeeting[];
+  activeCount: number;
+  dueDateFilter: string | null;
+  filteredCount: number;
+  nearestDueCount: number;
+  onToggleDueDateFilter: (dueDate: string) => void;
+}) {
   const firstDue = dueSoon[0];
+  const isFilteringNearestDue = Boolean(firstDue?.due_date && dueDateFilter === firstDue.due_date);
 
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -338,15 +393,28 @@ function DueSoonSummary({ dueSoon, activeCount }: { dueSoon: ActionItemWithMeeti
         <CheckCircle2 className="h-4 w-4 text-emerald-600" />
         미완료 {activeCount}개
       </span>
-      <Link
-        href={firstDue ? `/meetings/${firstDue.meeting_id}/actions` : "/dashboard"}
-        className="inline-flex min-w-0 items-center gap-2 rounded-md bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 transition hover:bg-amber-100"
+      <button
+        type="button"
+        disabled={!firstDue?.due_date}
+        className={`inline-flex min-w-0 items-center gap-2 rounded-md px-3 py-2 text-xs font-medium transition disabled:cursor-default disabled:opacity-70 ${
+          isFilteringNearestDue
+            ? "bg-amber-600 text-white hover:bg-amber-700"
+            : "bg-amber-50 text-amber-800 hover:bg-amber-100"
+        }`}
+        onClick={() => {
+          if (!firstDue?.due_date) return;
+          onToggleDueDateFilter(firstDue.due_date);
+        }}
       >
         <CalendarClock className="h-4 w-4 shrink-0" />
         <span className="truncate">
-          {firstDue ? `가장 가까운 마감 ${formatDate(firstDue.due_date)} · ${dueSoon.length}개` : "마감 예정 항목 없음"}
+          {firstDue
+            ? isFilteringNearestDue
+              ? `필터 적용 중 ${formatDate(firstDue.due_date)} · ${filteredCount}개`
+              : `가장 가까운 마감 ${formatDate(firstDue.due_date)} · ${nearestDueCount}개`
+            : "마감 예정 항목 없음"}
         </span>
-      </Link>
+      </button>
     </div>
   );
 }

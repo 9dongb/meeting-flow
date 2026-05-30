@@ -123,6 +123,11 @@ export const api = {
   analyzeMeeting(id: number) {
     return request<MeetingAnalysisResult>(`/meetings/${id}/analyze`, { method: "POST" });
   },
+  generateFollowUpEmailDraft(id: number) {
+    return request<NonNullable<Meeting["follow_up_email_drafts"]>[number]>(`/meetings/${id}/follow-up-email-draft`, {
+      method: "POST"
+    });
+  },
   listActionItems(meetingId: number) {
     return request<ActionItem[]>(`/meetings/${meetingId}/action-items`);
   },

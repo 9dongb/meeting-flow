@@ -1,12 +1,21 @@
-import { AlertTriangle, Mail } from "lucide-react";
+import { AlertTriangle, Mail, RefreshCw } from "lucide-react";
 
 import { PriorityBadge } from "@/components/meetings/status-badge";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { confidenceLabel, formatDate } from "@/lib/utils";
 import type { MeetingAnalysisResult } from "@/types";
 
-export function AnalysisResult({ result }: { result: MeetingAnalysisResult }) {
+export function AnalysisResult({
+  result,
+  generatingEmailDraft = false,
+  onGenerateEmailDraft
+}: {
+  result: MeetingAnalysisResult;
+  generatingEmailDraft?: boolean;
+  onGenerateEmailDraft?: () => void | Promise<void>;
+}) {
   const isAnalyzable = result.is_analyzable ?? true;
   const participants = result.participants ?? [];
 
@@ -156,10 +165,18 @@ export function AnalysisResult({ result }: { result: MeetingAnalysisResult }) {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Mail className="h-4 w-4" />
-              후속 메일 초안
-            </CardTitle>
+            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+              <CardTitle className="flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                후속 메일 초안
+              </CardTitle>
+              {onGenerateEmailDraft ? (
+                <Button variant="secondary" disabled={generatingEmailDraft} onClick={() => void onGenerateEmailDraft()}>
+                  <RefreshCw className={`h-4 w-4 ${generatingEmailDraft ? "animate-spin" : ""}`} />
+                  {generatingEmailDraft ? "작성 중" : "다시 작성"}
+                </Button>
+              ) : null}
+            </div>
           </CardHeader>
           <CardContent>
             <p className="text-sm font-semibold">{result.follow_up_email.subject}</p>

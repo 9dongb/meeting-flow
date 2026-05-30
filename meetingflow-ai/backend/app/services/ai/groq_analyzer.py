@@ -5,8 +5,13 @@ import httpx
 from pydantic import ValidationError
 
 from app.models.meeting import Meeting
-from app.schemas.analysis import MeetingAnalysisResult
-from app.services.ai.prompts import meeting_analysis_system_prompt, meeting_analysis_user_prompt
+from app.schemas.analysis import FollowUpEmailAnalysis, MeetingAnalysisResult
+from app.services.ai.prompts import (
+    follow_up_email_system_prompt,
+    follow_up_email_user_prompt,
+    meeting_analysis_system_prompt,
+    meeting_analysis_user_prompt,
+)
 from app.services.rag.schemas import RagAnalysisContext
 
 
@@ -77,6 +82,46 @@ class GroqMeetingAnalyzer:
 
         return self._parse_content(content)
 
+    def generate_follow_up_email(self, meeting: Meeting) -> FollowUpEmailAnalysis:
+        if not self.api_key:
+            raise AIConfigurationError("GROQ_API_KEY is not configured.")
+
+        transcript = self._prepare_transcript(meeting.transcript)
+        payload = {
+            "model": self.model,
+            "temperature": 0.2,
+            "max_completion_tokens": 2048,
+            "response_format": {"type": "json_object"},
+            "messages": [
+                {"role": "system", "content": follow_up_email_system_prompt()},
+                {"role": "user", "content": follow_up_email_user_prompt(meeting, transcript)},
+            ],
+        }
+
+        try:
+            response = httpx.post(
+                f"{self.base_url}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                },
+                json=payload,
+                timeout=self.timeout_seconds,
+            )
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            detail = exc.response.text[:500]
+            raise AIProviderError(f"Groq API returned {exc.response.status_code}: {detail}") from exc
+        except httpx.HTTPError as exc:
+            raise AIProviderError(f"Groq API request failed: {exc}") from exc
+
+        try:
+            content = response.json()["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
+            raise AIResponseParseError("Groq response did not include a valid message content.") from exc
+
+        return self._parse_email_content(content)
+
     def _prepare_transcript(self, transcript: str) -> str:
         transcript = transcript.strip()
         if len(transcript) <= self.max_transcript_chars:
@@ -93,6 +138,13 @@ class GroqMeetingAnalyzer:
             return MeetingAnalysisResult.model_validate_json(raw)
         except ValidationError as exc:
             raise AIResponseParseError(f"Groq JSON did not match the required analysis schema: {exc}") from exc
+
+    def _parse_email_content(self, content: str) -> FollowUpEmailAnalysis:
+        raw = self._extract_json(content)
+        try:
+            return FollowUpEmailAnalysis.model_validate_json(raw)
+        except ValidationError as exc:
+            raise AIResponseParseError(f"Groq JSON did not match the required email schema: {exc}") from exc
 
     def _extract_json(self, content: str) -> str:
         content = content.strip()

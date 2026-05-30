@@ -105,3 +105,104 @@ def meeting_analysis_user_prompt(
 회의록:
 {transcript}
 """.strip()
+
+
+def follow_up_email_system_prompt() -> str:
+    return """
+당신은 회의 분석 결과를 실무용 후속 이메일 초안으로 바꾸는 MeetingFlow AI입니다.
+출력은 JSON만 반환하세요. 마크다운, 주석, 설명 텍스트를 포함하지 마세요.
+분석 결과에 없는 내용을 추측하지 마세요.
+받는 사람이 바로 다음 행동을 이해할 수 있도록 정중하고 명확한 한국어 업무 메일로 작성하세요.
+body는 반드시 아래 구조를 따르세요:
+- 인사말
+- "YYYY년 M월 D일 진행된 {회의명} 회의 내용을 아래와 같이 공유드립니다." 형식의 도입 문장
+- "1. 주요 회의 내용"
+- "2. 주요 결정사항"
+- "3. 후속 액션 아이템"
+- "4. 추가 확인 필요사항"
+- "5. 다음 일정"
+- 확인 요청 문장
+- 감사 인사
+각 섹션 제목은 숫자와 제목을 그대로 사용하세요.
+주요 회의 내용은 1~2문단으로 자연스럽게 요약하세요.
+결정사항, 후속 액션 아이템, 추가 확인 필요사항은 하이픈 목록으로 작성하세요.
+액션 아이템은 "담당자: 업무 내용 (마감일: YYYY-MM-DD)" 형식으로 작성하세요.
+담당자나 마감일이 없으면 각각 "미정"으로 표시하세요.
+다음 일정이 분석 결과나 원문에 명확하지 않으면 "다음 회의 일정은 아직 확정되지 않았습니다."라고 작성하세요.
+결정사항과 후속 확인 사항은 액션 아이템과 구분해서 작성하세요.
+recipients에는 참석자 이메일 중 유효한 이메일만 중복 없이 포함하세요.
+아래 예시의 문체와 형식을 따르되, 예시의 사람 이름/날짜/내용은 실제 출력에 복사하지 마세요.
+
+One-shot 예시:
+{
+  "subject": "[후속 공유] A 프로젝트 회의 정리",
+  "body": "안녕하세요.\n\n2026년 5월 20일 진행된 A 프로젝트 회의 내용을 아래와 같이 공유드립니다.\n\n1. 주요 회의 내용\n\n이번 회의에서는 MVP 출시 일정, QA 진행 상황, 디자인 수정 범위에 대해 논의했습니다.\nMVP 출시는 기존 일정대로 진행하되, QA 리스크가 있는 기능은 우선순위를 조정하기로 했습니다.\n\n2. 주요 결정사항\n\n- MVP 출시는 기존 일정대로 진행합니다.\n- 결제 기능은 1차 출시 범위에서 제외합니다.\n- 디자인 수정안은 이번 주 금요일까지 확정합니다.\n\n3. 후속 액션 아이템\n\n- 김비수: Redis 캐시 레이어 설계 및 FastAPI 백엔드 적용 (마감일: 2026-02-02)\n- 이미희: 예외 케이스를 포함한 고도화된 QA 시나리오 최종 수정 (마감일: 2026-01-31)\n- 홍몸동: 일정 변경에 따른 유관 부서 공유 및 조율 (마감일: 2026-02-29)\n\n4. 추가 확인 필요사항\n\n- 결제 기능의 2차 출시 포함 여부\n- 고객사 검수 일정 확정\n- QA 리소스 추가 배정 가능 여부\n\n5. 다음 일정\n\n다음 회의는 6월 3일 오후 2시에 진행 예정입니다.\n각 담당자는 회의 전까지 본인 액션 아이템 진행 상황을 공유 부탁드립니다.\n\n내용 확인 후 수정이나 누락된 부분이 있으면 공유 부탁드립니다.\n\n감사합니다.",
+  "recipients": []
+}
+
+JSON은 정확히 다음 형태를 따라야 합니다:
+{
+  "subject": string,
+  "body": string,
+  "recipients": string[]
+}
+""".strip()
+
+
+def follow_up_email_user_prompt(meeting: Meeting, transcript: str) -> str:
+    participants = [
+        f"{participant.name} <{participant.email}>"
+        if participant.email
+        else participant.name
+        for participant in meeting.participants
+    ]
+    decisions = [
+        {
+            "content": decision.content,
+            "reason": decision.reason,
+        }
+        for decision in meeting.decisions
+    ]
+    action_items = [
+        {
+            "assignee": item.assignee,
+            "description": item.description,
+            "due_date": item.due_date.isoformat() if item.due_date else None,
+            "priority": item.priority.value if hasattr(item.priority, "value") else item.priority,
+            "status": item.status.value if hasattr(item.status, "value") else item.status,
+        }
+        for item in meeting.action_items
+    ]
+    unresolved_issues = [
+        {
+            "content": issue.content,
+            "owner": issue.owner,
+            "next_step": issue.next_step,
+        }
+        for issue in meeting.unresolved_issues
+    ]
+    meeting_date = meeting.meeting_date.isoformat() if isinstance(meeting.meeting_date, date) else None
+
+    return f"""
+아래의 저장된 회의 분석 결과를 우선 기준으로 후속 이메일 초안을 작성하세요.
+회의록 원문은 표현과 맥락을 보강하는 용도로만 참고하고, 분석 결과와 충돌하는 새 사실을 만들지 마세요.
+
+회의 제목: {meeting.title}
+회의 날짜: {meeting_date or "null"}
+참석자: {participants}
+
+요약:
+{meeting.summary or "저장된 요약 없음"}
+
+결정사항:
+{decisions}
+
+액션 아이템:
+{action_items}
+
+후속 확인 사항:
+{unresolved_issues}
+
+회의록 원문 참고:
+{transcript}
+""".strip()
