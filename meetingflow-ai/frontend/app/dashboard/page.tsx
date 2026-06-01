@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState, Feedback, LoadingState } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
-import { formatDate } from "@/lib/utils";
+import { formatDate, getDueState, isDueSoon } from "@/lib/utils";
 import type { ActionItemWithMeeting, ActionStatus, GoogleCalendarStatus, Meeting, MeetingUpdatePayload, Team, TeamMember } from "@/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
@@ -37,7 +37,7 @@ export default function DashboardPage() {
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [editingMeetingId, setEditingMeetingId] = useState<number | null>(null);
   const [savingMeetingId, setSavingMeetingId] = useState<number | null>(null);
-  const [dueDateFilter, setDueDateFilter] = useState<string | null>(null);
+  const [dueSoonFilterActive, setDueSoonFilterActive] = useState(false);
 
   const loadDashboard = useCallback(() => {
     setLoading(true);
@@ -60,34 +60,29 @@ export default function DashboardPage() {
   const dueSoon = useMemo(
     () =>
       actionItems
-        .filter((item) => item.status !== "done" && item.due_date)
-        .sort((a, b) => String(a.due_date).localeCompare(String(b.due_date)))
-        .slice(0, 5),
+        .filter((item) => item.status !== "done" && isDueSoon(item.due_date))
+        .sort((a, b) => String(a.due_date).localeCompare(String(b.due_date))),
     [actionItems]
   );
   const filteredActionItems = useMemo(
     () =>
-      dueDateFilter
-        ? actionItems.filter((item) => item.status !== "done" && item.due_date === dueDateFilter)
+      dueSoonFilterActive
+        ? actionItems.filter((item) => item.status !== "done" && isDueSoon(item.due_date))
         : actionItems,
-    [actionItems, dueDateFilter]
+    [actionItems, dueSoonFilterActive]
   );
   const activeCount = actionItems.filter((item) => item.status !== "done").length;
   const doneCount = actionItems.filter((item) => item.status === "done").length;
   const highPriorityCount = actionItems.filter((item) => item.status !== "done" && item.priority === "high").length;
   const filteredCount = filteredActionItems.length;
-  const nearestDueDate = dueSoon[0]?.due_date ?? null;
-  const nearestDueCount = nearestDueDate
-    ? actionItems.filter((item) => item.status !== "done" && item.due_date === nearestDueDate).length
-    : 0;
 
   useEffect(() => {
-    if (!dueDateFilter) return;
-    const stillHasMatchingDueDate = actionItems.some((item) => item.status !== "done" && item.due_date === dueDateFilter);
-    if (!stillHasMatchingDueDate) {
-      setDueDateFilter(null);
+    if (!dueSoonFilterActive) return;
+    const stillHasDueSoon = actionItems.some((item) => item.status !== "done" && isDueSoon(item.due_date));
+    if (!stillHasDueSoon) {
+      setDueSoonFilterActive(false);
     }
-  }, [actionItems, dueDateFilter]);
+  }, [actionItems, dueSoonFilterActive]);
 
   async function updateActionStatus(item: ActionItemWithMeeting, status: ActionStatus) {
     setUpdatingId(item.id);
@@ -184,10 +179,9 @@ export default function DashboardPage() {
               team={team}
               dueSoon={dueSoon}
               activeCount={activeCount}
-              dueDateFilter={dueDateFilter}
+              dueSoonFilterActive={dueSoonFilterActive}
               filteredCount={filteredCount}
-              nearestDueCount={nearestDueCount}
-              onToggleDueDateFilter={(dueDate) => setDueDateFilter((current) => (current === dueDate ? null : dueDate))}
+              onToggleDueSoonFilter={() => setDueSoonFilterActive((current) => !current)}
             />
           </div>
           {loading ? (
@@ -210,7 +204,7 @@ export default function DashboardPage() {
         </div>
 
         <aside className="space-y-6">
-          <Card>
+          <Card className="overflow-visible">
             <CardHeader>
               <div className="flex items-center justify-between gap-3">
                 <CardTitle>최근 회의</CardTitle>
@@ -275,18 +269,16 @@ function BoardContextBar({
   team,
   dueSoon,
   activeCount,
-  dueDateFilter,
+  dueSoonFilterActive,
   filteredCount,
-  nearestDueCount,
-  onToggleDueDateFilter
+  onToggleDueSoonFilter
 }: {
   team: Team | null;
   dueSoon: ActionItemWithMeeting[];
   activeCount: number;
-  dueDateFilter: string | null;
+  dueSoonFilterActive: boolean;
   filteredCount: number;
-  nearestDueCount: number;
-  onToggleDueDateFilter: (dueDate: string) => void;
+  onToggleDueSoonFilter: () => void;
 }) {
   const totalMemberCount = team?.member_count ?? 0;
 
@@ -304,10 +296,9 @@ function BoardContextBar({
       <DueSoonSummary
         dueSoon={dueSoon}
         activeCount={activeCount}
-        dueDateFilter={dueDateFilter}
+        dueSoonFilterActive={dueSoonFilterActive}
         filteredCount={filteredCount}
-        nearestDueCount={nearestDueCount}
-        onToggleDueDateFilter={onToggleDueDateFilter}
+        onToggleDueSoonFilter={onToggleDueSoonFilter}
       />
     </div>
   );
@@ -372,20 +363,18 @@ function AvatarStack({ members, totalCount }: { members: TeamMember[]; totalCoun
 function DueSoonSummary({
   dueSoon,
   activeCount,
-  dueDateFilter,
+  dueSoonFilterActive,
   filteredCount,
-  nearestDueCount,
-  onToggleDueDateFilter
+  onToggleDueSoonFilter
 }: {
   dueSoon: ActionItemWithMeeting[];
   activeCount: number;
-  dueDateFilter: string | null;
+  dueSoonFilterActive: boolean;
   filteredCount: number;
-  nearestDueCount: number;
-  onToggleDueDateFilter: (dueDate: string) => void;
+  onToggleDueSoonFilter: () => void;
 }) {
   const firstDue = dueSoon[0];
-  const isFilteringNearestDue = Boolean(firstDue?.due_date && dueDateFilter === firstDue.due_date);
+  const firstDueState = getDueState(firstDue?.due_date, firstDue?.status);
 
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -397,22 +386,19 @@ function DueSoonSummary({
         type="button"
         disabled={!firstDue?.due_date}
         className={`inline-flex min-w-0 items-center gap-2 rounded-md px-3 py-2 text-xs font-medium transition disabled:cursor-default disabled:opacity-70 ${
-          isFilteringNearestDue
+          dueSoonFilterActive
             ? "bg-amber-600 text-white hover:bg-amber-700"
             : "bg-amber-50 text-amber-800 hover:bg-amber-100"
         }`}
-        onClick={() => {
-          if (!firstDue?.due_date) return;
-          onToggleDueDateFilter(firstDue.due_date);
-        }}
+        onClick={onToggleDueSoonFilter}
       >
         <CalendarClock className="h-4 w-4 shrink-0" />
         <span className="truncate">
           {firstDue
-            ? isFilteringNearestDue
-              ? `필터 적용 중 ${formatDate(firstDue.due_date)} · ${filteredCount}개`
-              : `가장 가까운 마감 ${formatDate(firstDue.due_date)} · ${nearestDueCount}개`
-            : "마감 예정 항목 없음"}
+            ? dueSoonFilterActive
+              ? `마감 임박 필터 적용 중 · ${filteredCount}개`
+              : `마감 임박 3일 이내 · ${dueSoon.length}개 · ${firstDueState.label}`
+            : "마감 임박 항목 없음"}
         </span>
       </button>
     </div>

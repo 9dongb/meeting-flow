@@ -7,7 +7,7 @@ import { useRef, useState } from "react";
 
 import { PriorityBadge } from "@/components/meetings/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatDate } from "@/lib/utils";
+import { getDueState } from "@/lib/utils";
 import type { ActionItemWithMeeting, ActionStatus } from "@/types";
 
 const columns: Array<{
@@ -140,7 +140,7 @@ function KanbanColumn({
 }) {
   return (
     <Card
-      className={`${status === "done" ? "bg-slate-50" : ""} ${
+      className={`overflow-visible ${status === "done" ? "bg-slate-50" : ""} ${
         isDragOver ? "border-indigo-300 shadow-[0_14px_32px_rgba(94,106,210,0.14)]" : ""
       }`}
       onDragOver={onDragOver}
@@ -292,54 +292,4 @@ function ActionItemCard({
       </div>
     </div>
   );
-}
-
-function getDueState(dueDate?: string | null, status?: ActionStatus) {
-  if (!dueDate) {
-    return {
-      label: "마감 미정",
-      className: "bg-slate-100/80 text-slate-600"
-    };
-  }
-
-  if (status === "done") {
-    return {
-      label: `마감 ${formatDate(dueDate)}`,
-      className: "bg-slate-100/80 text-slate-600"
-    };
-  }
-
-  const today = startOfDay(new Date());
-  const due = startOfDay(new Date(dueDate));
-  const daysLeft = Math.round((due.getTime() - today.getTime()) / 86_400_000);
-
-  if (daysLeft < 0) {
-    return {
-      label: `지남 D+${Math.abs(daysLeft)}`,
-      className: "bg-red-50 text-red-700"
-    };
-  }
-
-  if (daysLeft === 0) {
-    return {
-      label: "오늘 마감",
-      className: "bg-red-50 text-red-700"
-    };
-  }
-
-  if (daysLeft <= 3) {
-    return {
-      label: `D-${daysLeft}`,
-      className: "bg-amber-50 text-amber-700"
-    };
-  }
-
-  return {
-    label: `마감 ${formatDate(dueDate)}`,
-    className: "bg-slate-100/80 text-slate-600"
-  };
-}
-
-function startOfDay(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }

@@ -79,7 +79,7 @@ export default function MeetingsPage() {
       {error ? <Feedback variant="error" className="mb-5">{error}</Feedback> : null}
       {message ? <Feedback variant="success" className="mb-5">{message}</Feedback> : null}
 
-      <Card>
+      <Card className="overflow-visible">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
