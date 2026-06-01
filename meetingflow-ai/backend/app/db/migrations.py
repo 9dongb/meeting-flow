@@ -36,6 +36,8 @@ def run_lightweight_migrations(engine: Engine) -> None:
                         workspace_name VARCHAR(255),
                         bot_id VARCHAR(255),
                         owner_email VARCHAR(320),
+                        meetingflow_page_id VARCHAR(255),
+                        meetingflow_page_url VARCHAR(1000),
                         access_token_encrypted TEXT,
                         refresh_token_encrypted TEXT,
                         created_at DATETIME NOT NULL,
@@ -51,6 +53,12 @@ def run_lightweight_migrations(engine: Engine) -> None:
             connection.execute(
                 text("CREATE INDEX ix_user_notion_accounts_workspace_id ON user_notion_accounts (workspace_id)")
             )
+        else:
+            notion_account_columns = {column["name"] for column in inspector.get_columns("user_notion_accounts")}
+            if "meetingflow_page_id" not in notion_account_columns:
+                connection.execute(text("ALTER TABLE user_notion_accounts ADD COLUMN meetingflow_page_id VARCHAR(255)"))
+            if "meetingflow_page_url" not in notion_account_columns:
+                connection.execute(text("ALTER TABLE user_notion_accounts ADD COLUMN meetingflow_page_url VARCHAR(1000)"))
 
         meeting_columns = {column["name"] for column in inspector.get_columns("meetings")}
         if "team_id" not in meeting_columns:

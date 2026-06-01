@@ -43,6 +43,7 @@ export interface NotionStatus {
   connected: boolean;
   workspace_name?: string | null;
   owner_email?: string | null;
+  meetingflow_page_url?: string | null;
 }
 
 export interface AuthResponse {

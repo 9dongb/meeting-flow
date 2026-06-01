@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, CalendarClock, CheckCircle2, Copy, FileText, Users } from "lucide-react";
+import { AlertTriangle, CalendarClock, CheckCircle2, Copy, FileText, PlusCircle, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
@@ -138,11 +138,17 @@ export default function DashboardPage() {
 
   return (
     <AppShell>
-      <div className="mb-8">
+      <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <p className="text-sm font-medium text-slate-500">{team ? team.name : "Dashboard"}</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-normal text-slate-950">회의 후속 업무 보드</h1>
         </div>
+        <Link href="/meetings/new">
+          <Button>
+            <PlusCircle className="h-4 w-4" />
+            새 회의록 생성
+          </Button>
+        </Link>
       </div>
 
       {error ? <Feedback variant="error" className="mb-5">{error}</Feedback> : null}
@@ -510,6 +516,16 @@ function IntegrationsPanel({
                   ? `${notionStatus.workspace_name ?? "Workspace"}${notionStatus.owner_email ? ` · ${notionStatus.owner_email}` : ""}`
                   : "분석 결과를 Notion 초안으로 작성하려면 연결이 필요합니다."}
               </p>
+              {notionStatus?.meetingflow_page_url ? (
+                <a
+                  className="mt-1 inline-flex text-xs font-medium text-indigo-600 underline underline-offset-2"
+                  href={notionStatus.meetingflow_page_url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  MeetingFlow 페이지 열기
+                </a>
+              ) : null}
             </div>
           </div>
           <Button className="mt-3 w-full" variant={notionStatus?.connected ? "secondary" : "default"} onClick={connectNotion}>

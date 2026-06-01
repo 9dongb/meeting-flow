@@ -92,7 +92,12 @@ def test_google_auth_and_calendar_status_defaults(client: TestClient) -> None:
     }
     notion_status = client.get("/integrations/notion/status")
     assert notion_status.status_code == 200
-    assert notion_status.json() == {"connected": False, "workspace_name": None, "owner_email": None}
+    assert notion_status.json() == {
+        "connected": False,
+        "workspace_name": None,
+        "owner_email": None,
+        "meetingflow_page_url": None,
+    }
 
 
 def test_protected_routes_require_authentication(client: TestClient) -> None:
@@ -233,14 +238,30 @@ def test_notion_oauth_status_and_draft_creation(client: TestClient, monkeypatch:
         "connected": True,
         "workspace_name": "Product Workspace",
         "owner_email": "owner@example.com",
+        "meetingflow_page_url": None,
     }
+
+    created_workspace_pages = []
+    draft_parent_page_ids = []
 
     monkeypatch.setattr(
         NotionDraftService,
+        "_create_workspace_page",
+        lambda self, access_token, title: created_workspace_pages.append(title)
+        or {"id": "meetingflow-parent-1", "url": "https://www.notion.so/meetingflow-parent-1"},
+    )
+    monkeypatch.setattr(
+        NotionDraftService,
+        "_retrieve_page",
+        lambda self, access_token, page_id: {"id": page_id, "url": "https://www.notion.so/meetingflow-parent-1"},
+    )
+    monkeypatch.setattr(
+        NotionDraftService,
         "_create_page",
-        lambda self, access_token, title, markdown: {
-            "id": "page-1",
-            "url": "https://www.notion.so/page-1",
+        lambda self, access_token, title, markdown, *, parent_page_id: draft_parent_page_ids.append(parent_page_id)
+        or {
+            "id": f"page-{len(draft_parent_page_ids)}",
+            "url": f"https://www.notion.so/page-{len(draft_parent_page_ids)}",
         },
     )
     draft_response = client.post(f"/meetings/{meeting_id}/notion-draft")
@@ -249,6 +270,18 @@ def test_notion_oauth_status_and_draft_creation(client: TestClient, monkeypatch:
     assert draft["page_id"] == "page-1"
     assert draft["url"] == "https://www.notion.so/page-1"
     assert draft["log"]["status"] == "success"
+    assert draft["log"]["payload_json"]["parent_page_id"] == "meetingflow-parent-1"
+    assert created_workspace_pages == ["MeetingFlow"]
+    assert draft_parent_page_ids == ["meetingflow-parent-1"]
+
+    draft_response = client.post(f"/meetings/{meeting_id}/notion-draft")
+    assert draft_response.status_code == 200
+    assert draft_response.json()["page_id"] == "page-2"
+    assert created_workspace_pages == ["MeetingFlow"]
+    assert draft_parent_page_ids == ["meetingflow-parent-1", "meetingflow-parent-1"]
+
+    status_response = client.get("/integrations/notion/status")
+    assert status_response.json()["meetingflow_page_url"] == "https://www.notion.so/meetingflow-parent-1"
 
 
 def test_users_cannot_access_each_others_data(client: TestClient) -> None:

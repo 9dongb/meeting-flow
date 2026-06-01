@@ -15,6 +15,8 @@ class UserNotionAccount(Base):
     workspace_name: Mapped[str | None] = mapped_column(String(255))
     bot_id: Mapped[str | None] = mapped_column(String(255))
     owner_email: Mapped[str | None] = mapped_column(String(320))
+    meetingflow_page_id: Mapped[str | None] = mapped_column(String(255))
+    meetingflow_page_url: Mapped[str | None] = mapped_column(String(1000))
     access_token_encrypted: Mapped[str | None] = mapped_column(Text)
     refresh_token_encrypted: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(

@@ -15,6 +15,7 @@ from app.services.integrations.mock_services import create_mock_log, render_mark
 
 NOTION_TOKEN_URL = "https://api.notion.com/v1/oauth/token"
 NOTION_PAGES_URL = "https://api.notion.com/v1/pages"
+MEETINGFLOW_PARENT_PAGE_TITLE = "MeetingFlow"
 
 
 class NotionIntegrationError(Exception):
@@ -96,8 +97,9 @@ class NotionDraftService:
         if not access_token:
             raise NotionIntegrationError("Notion is not connected.")
 
+        parent_page = self.ensure_meetingflow_parent_page(db, access_token, account)
         markdown = render_markdown(meeting)
-        page = self._create_page(access_token, meeting.title, markdown)
+        page = self._create_page(access_token, meeting.title, markdown, parent_page_id=str(parent_page["id"]))
         log = IntegrationActionLog(
             meeting_id=meeting.id,
             integration_type=IntegrationType.notion,
@@ -105,6 +107,8 @@ class NotionDraftService:
             payload_json={
                 "page_id": page.get("id"),
                 "url": page.get("url"),
+                "parent_page_id": parent_page.get("id"),
+                "parent_page_url": parent_page.get("url"),
                 "workspace_id": account.workspace_id,
                 "workspace_name": account.workspace_name,
             },
@@ -113,6 +117,32 @@ class NotionDraftService:
         db.commit()
         db.refresh(log)
         return page, log
+
+    def ensure_meetingflow_parent_page(self, db: Session, access_token: str, account: UserNotionAccount) -> dict:
+        if account.meetingflow_page_id:
+            try:
+                page = self._retrieve_page(access_token, account.meetingflow_page_id)
+                account.meetingflow_page_url = page.get("url") or account.meetingflow_page_url
+                db.add(account)
+                db.commit()
+                db.refresh(account)
+                return page
+            except NotionIntegrationError:
+                account.meetingflow_page_id = None
+                account.meetingflow_page_url = None
+                db.add(account)
+                db.commit()
+                db.refresh(account)
+
+        page = self._create_workspace_page(access_token, MEETINGFLOW_PARENT_PAGE_TITLE)
+        if not page.get("id"):
+            raise NotionIntegrationError("Notion parent page creation did not return a page id")
+        account.meetingflow_page_id = page.get("id")
+        account.meetingflow_page_url = page.get("url")
+        db.add(account)
+        db.commit()
+        db.refresh(account)
+        return page
 
     def create_failure_log(self, db: Session, meeting: Meeting, error: str) -> IntegrationActionLog:
         log = IntegrationActionLog(
@@ -126,7 +156,51 @@ class NotionDraftService:
         db.refresh(log)
         return log
 
-    def _create_page(self, access_token: str, title: str, markdown: str) -> dict:
+    def _retrieve_page(self, access_token: str, page_id: str) -> dict:
+        settings = get_settings()
+        try:
+            response = httpx.get(
+                f"{NOTION_PAGES_URL}/{page_id}",
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Notion-Version": settings.notion_api_version,
+                },
+                timeout=30,
+            )
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as exc:
+            raise NotionIntegrationError(f"Notion parent page lookup failed: {exc.response.text[:300]}") from exc
+        except httpx.HTTPError as exc:
+            raise NotionIntegrationError(f"Notion parent page lookup failed: {exc}") from exc
+
+    def _create_workspace_page(self, access_token: str, title: str) -> dict:
+        return self._create_page_payload(
+            access_token,
+            {
+                "properties": {
+                    "title": {
+                        "title": [{"text": {"content": title[:2000]}}]
+                    }
+                },
+            },
+        )
+
+    def _create_page(self, access_token: str, title: str, markdown: str, *, parent_page_id: str) -> dict:
+        return self._create_page_payload(
+            access_token,
+            {
+                "parent": {"page_id": parent_page_id},
+                "properties": {
+                    "title": {
+                        "title": [{"text": {"content": title[:2000]}}]
+                    }
+                },
+                "markdown": markdown,
+            },
+        )
+
+    def _create_page_payload(self, access_token: str, payload: dict) -> dict:
         settings = get_settings()
         try:
             response = httpx.post(
@@ -136,14 +210,7 @@ class NotionDraftService:
                     "Content-Type": "application/json",
                     "Notion-Version": settings.notion_api_version,
                 },
-                json={
-                    "properties": {
-                        "title": {
-                            "title": [{"text": {"content": title[:2000]}}]
-                        }
-                    },
-                    "markdown": markdown,
-                },
+                json=payload,
                 timeout=30,
             )
             response.raise_for_status()

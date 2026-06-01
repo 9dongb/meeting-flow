@@ -31,6 +31,7 @@ class NotionStatus(BaseModel):
     connected: bool
     workspace_name: str | None = None
     owner_email: str | None = None
+    meetingflow_page_url: str | None = None
 
 
 class NotionDraftResponse(BaseModel):

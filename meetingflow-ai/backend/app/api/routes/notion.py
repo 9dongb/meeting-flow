@@ -33,6 +33,7 @@ def notion_status(db: DbSession, current_user: CurrentUser) -> NotionStatus:
         connected=True,
         workspace_name=account.workspace_name,
         owner_email=account.owner_email,
+        meetingflow_page_url=account.meetingflow_page_url,
     )
 
 
