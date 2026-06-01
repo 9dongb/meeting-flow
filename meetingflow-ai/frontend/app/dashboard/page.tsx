@@ -15,7 +15,7 @@ import { EmptyState, Feedback, LoadingState } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { formatDate, isDueSoon } from "@/lib/utils";
-import type { ActionItemWithMeeting, ActionStatus, GoogleCalendarStatus, Meeting, Team, TeamMember } from "@/types";
+import type { ActionItemWithMeeting, ActionStatus, GoogleCalendarStatus, Meeting, NotionStatus, Team, TeamMember } from "@/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 const MAX_VISIBLE_COLLABORATORS = 4;
@@ -32,6 +32,7 @@ export default function DashboardPage() {
   const [actionItems, setActionItems] = useState<ActionItemWithMeeting[]>([]);
   const [team, setTeam] = useState<Team | null>(null);
   const [calendarStatus, setCalendarStatus] = useState<GoogleCalendarStatus | null>(null);
+  const [notionStatus, setNotionStatus] = useState<NotionStatus | null>(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -42,12 +43,13 @@ export default function DashboardPage() {
   const loadDashboard = useCallback(() => {
     setLoading(true);
     setError("");
-    Promise.all([api.listMeetings(), api.listAllActionItems(), api.getCurrentTeam(), api.getGoogleCalendarStatus()])
-      .then(([meetingData, actionData, teamData, calendarData]) => {
+    Promise.all([api.listMeetings(), api.listAllActionItems(), api.getCurrentTeam(), api.getGoogleCalendarStatus(), api.getNotionStatus()])
+      .then(([meetingData, actionData, teamData, calendarData, notionData]) => {
         setMeetings(meetingData);
         setActionItems(actionData);
         setTeam(teamData);
         setCalendarStatus(calendarData);
+        setNotionStatus(notionData);
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
@@ -224,9 +226,10 @@ export default function DashboardPage() {
           </Card>
 
           <TeamPanel team={team} onJoined={loadDashboard} onMessage={setMessage} onError={setError} />
-          <CalendarPanel
-            status={calendarStatus}
-            onStatusChange={setCalendarStatus}
+          <IntegrationsPanel
+            calendarStatus={calendarStatus}
+            notionStatus={notionStatus}
+            onCalendarStatusChange={setCalendarStatus}
             onMessage={setMessage}
             onError={setError}
           />
@@ -375,30 +378,32 @@ function DueSoonSummary({
   );
 }
 
-function CalendarPanel({
-  status,
-  onStatusChange,
+function IntegrationsPanel({
+  calendarStatus,
+  notionStatus,
+  onCalendarStatusChange,
   onMessage,
   onError
 }: {
-  status: GoogleCalendarStatus | null;
-  onStatusChange: (status: GoogleCalendarStatus) => void;
+  calendarStatus: GoogleCalendarStatus | null;
+  notionStatus: NotionStatus | null;
+  onCalendarStatusChange: (status: GoogleCalendarStatus) => void;
   onMessage: (message: string) => void;
   onError: (message: string) => void;
 }) {
   const [updating, setUpdating] = useState(false);
 
   async function toggleSync() {
-    if (!status?.permission_granted) {
-      window.location.href = `${API_BASE_URL}/integrations/google-calendar/connect`;
+    if (!calendarStatus?.permission_granted) {
+      window.location.href = `${API_BASE_URL}/integrations/google-calendar/connect?return_to=${encodeURIComponent("/dashboard?calendar=connected")}`;
       return;
     }
     setUpdating(true);
     onMessage("");
     onError("");
     try {
-      const updated = await api.updateGoogleCalendarSettings({ sync_enabled: !status.sync_enabled });
-      onStatusChange(updated);
+      const updated = await api.updateGoogleCalendarSettings({ sync_enabled: !calendarStatus.sync_enabled });
+      onCalendarStatusChange(updated);
       onMessage(updated.sync_enabled ? "Google Calendar 동기화를 켰습니다." : "Google Calendar 동기화를 껐습니다.");
     } catch (err) {
       onError(err instanceof Error ? err.message : "Google Calendar 설정 변경에 실패했습니다.");
@@ -413,7 +418,7 @@ function CalendarPanel({
     onError("");
     try {
       const updated = await api.syncGoogleCalendarNow();
-      onStatusChange(updated);
+      onCalendarStatusChange(updated);
       if (updated.failed_count > 0) {
         onError(`Calendar 동기화 실패 ${updated.failed_count}건이 있습니다. ${updated.last_error ?? ""}`.trim());
       } else {
@@ -426,50 +431,105 @@ function CalendarPanel({
     }
   }
 
+  function connectNotion() {
+    window.location.href = `${API_BASE_URL}/integrations/notion/connect?return_to=${encodeURIComponent("/dashboard?notion=connected")}`;
+  }
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <CalendarClock className="h-4 w-4" />
-          Google Calendar
-        </CardTitle>
+        <CardTitle>외부 연동</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div>
-          <p className="text-sm font-medium">
-            {status?.permission_granted ? (status.sync_enabled ? "동기화 ON" : "연결됨 · 동기화 OFF") : "권한 필요"}
-          </p>
-          <p className="mt-1 truncate text-xs text-slate-500">
-            {status?.permission_granted ? `${status.email} · ${status.calendar_id}` : "Calendar 이벤트 접근 권한을 승인해야 합니다."}
-          </p>
-        </div>
-        {status?.permission_granted ? (
-          <div className="grid grid-cols-3 gap-2 text-center text-xs">
-            <div className="rounded-md bg-emerald-50 px-2 py-2 text-emerald-700">
-              <p className="font-semibold">{status.synced_count}</p>
-              <p>완료</p>
-            </div>
-            <div className="rounded-md bg-red-50 px-2 py-2 text-red-700">
-              <p className="font-semibold">{status.failed_count}</p>
-              <p>실패</p>
-            </div>
-            <div className="rounded-md bg-slate-50 px-2 py-2 text-slate-600">
-              <p className="font-semibold">{status.skipped_count}</p>
-              <p>제외</p>
+      <CardContent className="space-y-5">
+        <div className="space-y-3">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-700">
+              <CalendarClock className="h-4 w-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-sm font-semibold text-slate-900">Google Calendar</p>
+                <ConnectionPill connected={Boolean(calendarStatus?.permission_granted)} />
+              </div>
+              <p className="mt-1 truncate text-xs text-slate-500">
+                {calendarStatus?.permission_granted
+                  ? `${calendarStatus.sync_enabled ? "동기화 ON" : "동기화 OFF"} · ${calendarStatus.email}`
+                  : "Calendar 이벤트 권한이 필요합니다."}
+              </p>
             </div>
           </div>
-        ) : null}
-        {status?.last_error ? <p className="line-clamp-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{status.last_error}</p> : null}
-        <Button className="w-full" variant={status?.sync_enabled ? "secondary" : "default"} disabled={updating} onClick={toggleSync}>
-          {status?.permission_granted ? (status.sync_enabled ? "동기화 끄기" : "동기화 켜기") : "Calendar 권한 연결"}
-        </Button>
-        {status?.permission_granted && status.sync_enabled ? (
-          <Button className="w-full" variant="secondary" disabled={updating} onClick={syncNow}>
-            지금 재동기화
+
+          {calendarStatus?.permission_granted ? (
+            <div className="grid grid-cols-3 gap-2 text-center text-xs">
+              <div className="rounded-md bg-emerald-50 px-2 py-2 text-emerald-700">
+                <p className="font-semibold">{calendarStatus.synced_count}</p>
+                <p>완료</p>
+              </div>
+              <div className="rounded-md bg-red-50 px-2 py-2 text-red-700">
+                <p className="font-semibold">{calendarStatus.failed_count}</p>
+                <p>실패</p>
+              </div>
+              <div className="rounded-md bg-slate-50 px-2 py-2 text-slate-600">
+                <p className="font-semibold">{calendarStatus.skipped_count}</p>
+                <p>제외</p>
+              </div>
+            </div>
+          ) : null}
+
+          {calendarStatus?.last_error ? <p className="line-clamp-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{calendarStatus.last_error}</p> : null}
+
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+            <Button
+              className={`w-full ${!calendarStatus?.permission_granted ? "sm:col-span-2 xl:col-span-1 2xl:col-span-2" : ""}`}
+              variant={calendarStatus?.sync_enabled ? "secondary" : "default"}
+              disabled={updating}
+              onClick={toggleSync}
+            >
+              {calendarStatus?.permission_granted ? (calendarStatus.sync_enabled ? "동기화 끄기" : "동기화 켜기") : "Calendar 권한 연결"}
+            </Button>
+            {calendarStatus?.permission_granted && calendarStatus.sync_enabled ? (
+              <Button className="w-full" variant="secondary" disabled={updating} onClick={syncNow}>
+                지금 재동기화
+              </Button>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="border-t border-border pt-4">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-700">
+              <FileText className="h-4 w-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-sm font-semibold text-slate-900">Notion</p>
+                <ConnectionPill connected={Boolean(notionStatus?.connected)} />
+              </div>
+              <p className="mt-1 truncate text-xs text-slate-500">
+                {notionStatus?.connected
+                  ? `${notionStatus.workspace_name ?? "Workspace"}${notionStatus.owner_email ? ` · ${notionStatus.owner_email}` : ""}`
+                  : "분석 결과를 Notion 초안으로 작성하려면 연결이 필요합니다."}
+              </p>
+            </div>
+          </div>
+          <Button className="mt-3 w-full" variant={notionStatus?.connected ? "secondary" : "default"} onClick={connectNotion}>
+            {notionStatus?.connected ? "Notion 다시 연결" : "Notion 연결"}
           </Button>
-        ) : null}
+        </div>
       </CardContent>
     </Card>
+  );
+}
+
+function ConnectionPill({ connected }: { connected: boolean }) {
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-[11px] font-medium ${
+        connected ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+      }`}
+    >
+      {connected ? "연결됨" : "미연결"}
+    </span>
   );
 }
 

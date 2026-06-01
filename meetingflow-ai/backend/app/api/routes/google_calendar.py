@@ -1,4 +1,5 @@
 import secrets
+from urllib.parse import unquote
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
@@ -24,6 +25,7 @@ from app.services.google_oauth import (
 
 router = APIRouter(prefix="/integrations/google-calendar", tags=["google-calendar"])
 GOOGLE_CALENDAR_STATE_COOKIE = "meetingflow_google_calendar_state"
+GOOGLE_CALENDAR_RETURN_TO_COOKIE = "meetingflow_google_calendar_return_to"
 
 
 @router.get("/status", response_model=GoogleCalendarStatus)
@@ -35,7 +37,7 @@ def google_calendar_status(db: DbSession, current_user: CurrentUser) -> GoogleCa
 
 
 @router.get("/connect")
-def connect_google_calendar(current_user: CurrentUser) -> RedirectResponse:
+def connect_google_calendar(current_user: CurrentUser, return_to: str | None = Query(default=None)) -> RedirectResponse:
     settings = get_settings()
     state = secrets.token_urlsafe(24)
     try:
@@ -58,6 +60,16 @@ def connect_google_calendar(current_user: CurrentUser) -> RedirectResponse:
         max_age=600,
         path="/",
     )
+    if return_to:
+        response.set_cookie(
+            key=GOOGLE_CALENDAR_RETURN_TO_COOKIE,
+            value=_safe_frontend_path(return_to),
+            httponly=True,
+            secure=settings.auth_cookie_secure,
+            samesite=settings.auth_cookie_samesite,
+            max_age=600,
+            path="/",
+        )
     return response
 
 
@@ -102,9 +114,17 @@ def google_calendar_callback(
     update_calendar_settings(db, account, enabled=True)
     _sync_current_team_items(db, current_user.id)
 
-    redirect = RedirectResponse(f"{settings.frontend_base_url}/dashboard", status_code=status.HTTP_302_FOUND)
+    return_to = _safe_frontend_path(request.cookies.get(GOOGLE_CALENDAR_RETURN_TO_COOKIE))
+    redirect = RedirectResponse(f"{settings.frontend_base_url}{return_to}", status_code=status.HTTP_302_FOUND)
     redirect.delete_cookie(
         key=GOOGLE_CALENDAR_STATE_COOKIE,
+        httponly=True,
+        secure=settings.auth_cookie_secure,
+        samesite=settings.auth_cookie_samesite,
+        path="/",
+    )
+    redirect.delete_cookie(
+        key=GOOGLE_CALENDAR_RETURN_TO_COOKIE,
         httponly=True,
         secure=settings.auth_cookie_secure,
         samesite=settings.auth_cookie_samesite,
@@ -183,3 +203,13 @@ def _calendar_status(db: DbSession, user_id: int, account) -> GoogleCalendarStat
         skipped_count=counts.get("skipped_no_due_date", 0),
         last_error=last_failed.last_error if last_failed else None,
     )
+
+
+def _safe_frontend_path(value: str | None) -> str:
+    if not value:
+        return "/dashboard"
+
+    path = unquote(value)
+    if not path.startswith("/") or path.startswith("//") or "\r" in path or "\n" in path:
+        return "/dashboard"
+    return path

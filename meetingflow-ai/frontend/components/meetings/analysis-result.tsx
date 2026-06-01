@@ -161,12 +161,12 @@ export function AnalysisResult({
               <Button
                 type="button"
                 variant="secondary"
-                className="h-12 px-4 text-sm sm:text-base [&>span]:whitespace-nowrap"
+                className="h-12 px-4 text-sm leading-4 sm:text-base [&>span]:text-center"
                 disabled={generatingNotionDraft || (!notionConnected && !onConnectNotion) || (notionConnected && !onGenerateNotionDraft)}
                 onClick={() => (notionConnected ? void onGenerateNotionDraft?.() : onConnectNotion?.())}
               >
                 <FileText className={`h-5 w-5 ${generatingNotionDraft ? "animate-pulse" : ""}`} />
-                <span>{generatingNotionDraft ? "Notion 작성 중" : notionConnected ? "Notion 초안 작성" : "Notion 연결"}</span>
+                <span>{generatingNotionDraft ? "Notion 작성 중" : notionConnected ? "Notion 초안 작성" : "Notion 연결 후 초안 생성"}</span>
               </Button>
             </div>
           </CardContent>

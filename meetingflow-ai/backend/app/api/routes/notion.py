@@ -1,4 +1,5 @@
 import secrets
+from urllib.parse import unquote
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
@@ -20,6 +21,7 @@ from app.services.integrations.notion import (
 
 router = APIRouter(tags=["notion"])
 NOTION_STATE_COOKIE = "meetingflow_notion_state"
+NOTION_RETURN_TO_COOKIE = "meetingflow_notion_return_to"
 
 
 @router.get("/integrations/notion/status", response_model=NotionStatus)
@@ -35,7 +37,7 @@ def notion_status(db: DbSession, current_user: CurrentUser) -> NotionStatus:
 
 
 @router.get("/integrations/notion/connect")
-def connect_notion(current_user: CurrentUser) -> RedirectResponse:
+def connect_notion(current_user: CurrentUser, return_to: str | None = Query(default=None)) -> RedirectResponse:
     settings = get_settings()
     state = secrets.token_urlsafe(24)
     try:
@@ -53,6 +55,16 @@ def connect_notion(current_user: CurrentUser) -> RedirectResponse:
         max_age=600,
         path="/",
     )
+    if return_to:
+        response.set_cookie(
+            key=NOTION_RETURN_TO_COOKIE,
+            value=_safe_frontend_path(return_to),
+            httponly=True,
+            secure=settings.auth_cookie_secure,
+            samesite=settings.auth_cookie_samesite,
+            max_age=600,
+            path="/",
+        )
     return response
 
 
@@ -89,9 +101,17 @@ def notion_callback(
         refresh_token=tokens.get("refresh_token"),
     )
 
-    redirect = RedirectResponse(f"{settings.frontend_base_url}/dashboard?notion=connected", status_code=status.HTTP_302_FOUND)
+    return_to = _safe_frontend_path(request.cookies.get(NOTION_RETURN_TO_COOKIE))
+    redirect = RedirectResponse(f"{settings.frontend_base_url}{return_to}", status_code=status.HTTP_302_FOUND)
     redirect.delete_cookie(
         key=NOTION_STATE_COOKIE,
+        httponly=True,
+        secure=settings.auth_cookie_secure,
+        samesite=settings.auth_cookie_samesite,
+        path="/",
+    )
+    redirect.delete_cookie(
+        key=NOTION_RETURN_TO_COOKIE,
         httponly=True,
         secure=settings.auth_cookie_secure,
         samesite=settings.auth_cookie_samesite,
@@ -119,3 +139,13 @@ def create_notion_draft(meeting_id: int, db: DbSession, current_user: CurrentUse
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
 
     return NotionDraftResponse(page_id=str(page.get("id", "")), url=page.get("url"), log=log)
+
+
+def _safe_frontend_path(value: str | None) -> str:
+    if not value:
+        return "/dashboard?notion=connected"
+
+    path = unquote(value)
+    if not path.startswith("/") or path.startswith("//") or "\r" in path or "\n" in path:
+        return "/dashboard?notion=connected"
+    return path

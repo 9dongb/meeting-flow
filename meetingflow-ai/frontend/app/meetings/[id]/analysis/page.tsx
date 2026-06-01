@@ -3,7 +3,7 @@
 import { Eye, MoreHorizontal, Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import type { FormEvent, ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { AnalysisResult } from "@/components/meetings/analysis-result";
@@ -43,13 +43,16 @@ export default function MeetingAnalysisPage() {
   const [deletingMeeting, setDeletingMeeting] = useState(false);
   const [generatingEmailDraft, setGeneratingEmailDraft] = useState(false);
   const [generatingNotionDraft, setGeneratingNotionDraft] = useState(false);
+  const [autoNotionDraftRequested, setAutoNotionDraftRequested] = useState(false);
   const [error, setError] = useState("");
   const [draftError, setDraftError] = useState("");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
     if (!meetingId) return;
-    setEditingAnalysis(new URLSearchParams(window.location.search).get("edit") === "1");
+    const searchParams = new URLSearchParams(window.location.search);
+    setEditingAnalysis(searchParams.get("edit") === "1");
+    setAutoNotionDraftRequested(searchParams.get("notion_action") === "create_draft");
 
     const cached = window.sessionStorage.getItem(`meetingflow_analysis_${meetingId}`);
     if (cached) {
@@ -102,10 +105,11 @@ export default function MeetingAnalysisPage() {
   }
 
   function connectNotion() {
-    window.location.href = `${API_BASE_URL}/integrations/notion/connect`;
+    const returnTo = `/meetings/${meetingId}/analysis?notion_action=create_draft`;
+    window.location.href = `${API_BASE_URL}/integrations/notion/connect?return_to=${encodeURIComponent(returnTo)}`;
   }
 
-  async function generateNotionDraft() {
+  const generateNotionDraft = useCallback(async () => {
     if (!meetingId) return;
     setGeneratingNotionDraft(true);
     setDraftError("");
@@ -120,7 +124,18 @@ export default function MeetingAnalysisPage() {
     } finally {
       setGeneratingNotionDraft(false);
     }
-  }
+  }, [meetingId]);
+
+  useEffect(() => {
+    if (!autoNotionDraftRequested || !notionStatus?.connected || generatingNotionDraft || !meetingId) return;
+
+    setAutoNotionDraftRequested(false);
+    const searchParams = new URLSearchParams(window.location.search);
+    searchParams.delete("notion_action");
+    const nextQuery = searchParams.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}`);
+    void generateNotionDraft();
+  }, [autoNotionDraftRequested, notionStatus?.connected, generatingNotionDraft, meetingId, generateNotionDraft]);
 
   async function saveAnalysis(payload: MeetingAnalysisUpdatePayload) {
     if (!meetingId) return;

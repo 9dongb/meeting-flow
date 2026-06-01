@@ -216,11 +216,16 @@ def test_notion_oauth_status_and_draft_creation(client: TestClient, monkeypatch:
         },
     )
     client.cookies.set(notion_route.NOTION_STATE_COOKIE, "state-1")
+    client.cookies.set(
+        notion_route.NOTION_RETURN_TO_COOKIE,
+        "/meetings/1/analysis?notion_action=create_draft",
+    )
     callback_response = client.get(
         "/integrations/notion/callback?code=code-1&state=state-1",
         follow_redirects=False,
     )
     assert callback_response.status_code == 302
+    assert callback_response.headers["location"] == "http://localhost:3000/meetings/1/analysis?notion_action=create_draft"
 
     status_response = client.get("/integrations/notion/status")
     assert status_response.status_code == 200
