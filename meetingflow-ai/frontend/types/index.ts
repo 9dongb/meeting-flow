@@ -39,6 +39,12 @@ export interface GoogleCalendarStatus {
   last_error?: string | null;
 }
 
+export interface NotionStatus {
+  connected: boolean;
+  workspace_name?: string | null;
+  owner_email?: string | null;
+}
+
 export interface AuthResponse {
   user: User;
 }
@@ -201,7 +207,7 @@ export interface MockIntegrationResponse {
   log: {
     id: number;
     integration_type: "notion" | "google_calendar" | "gmail" | "markdown";
-    status: "mock_success" | "mock_failed";
+    status: "mock_success" | "mock_failed" | "success" | "failed";
     payload_json: Record<string, unknown>;
     created_at: string;
   };
@@ -209,5 +215,11 @@ export interface MockIntegrationResponse {
 
 export interface MarkdownExportResponse {
   markdown: string;
+  log: MockIntegrationResponse["log"];
+}
+
+export interface NotionDraftResponse {
+  page_id: string;
+  url?: string | null;
   log: MockIntegrationResponse["log"];
 }

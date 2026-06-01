@@ -27,4 +27,17 @@ class MockIntegrationResponse(BaseModel):
     log: IntegrationActionLogRead
 
 
+class NotionStatus(BaseModel):
+    connected: bool
+    workspace_name: str | None = None
+    owner_email: str | None = None
+
+
+class NotionDraftResponse(BaseModel):
+    page_id: str
+    url: str | None = None
+    log: IntegrationActionLogRead
+
+
 MarkdownExportResponse.model_rebuild()
+NotionDraftResponse.model_rebuild()

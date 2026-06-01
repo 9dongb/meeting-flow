@@ -5,6 +5,7 @@ from app.models.follow_up_email_draft import FollowUpEmailDraft
 from app.models.google_account import UserGoogleAccount
 from app.models.integration_action_log import IntegrationActionLog
 from app.models.meeting import Meeting
+from app.models.notion_account import UserNotionAccount
 from app.models.participant import Participant
 from app.models.team import Team
 from app.models.team_membership import TeamMembership
@@ -19,6 +20,7 @@ __all__ = [
     "UserGoogleAccount",
     "IntegrationActionLog",
     "Meeting",
+    "UserNotionAccount",
     "Participant",
     "Team",
     "TeamMembership",

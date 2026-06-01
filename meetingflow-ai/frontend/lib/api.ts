@@ -11,6 +11,8 @@ import type {
   MeetingCreatePayload,
   MeetingUpdatePayload,
   MockIntegrationResponse,
+  NotionDraftResponse,
+  NotionStatus,
   Team
 } from "@/types";
 
@@ -100,6 +102,9 @@ export const api = {
   syncGoogleCalendarNow() {
     return request<GoogleCalendarStatus>("/integrations/google-calendar/sync", { method: "POST" });
   },
+  getNotionStatus() {
+    return request<NotionStatus>("/integrations/notion/status");
+  },
   listMeetings() {
     return request<Meeting[]>("/meetings");
   },
@@ -132,6 +137,11 @@ export const api = {
   },
   generateFollowUpEmailDraft(id: number) {
     return request<NonNullable<Meeting["follow_up_email_drafts"]>[number]>(`/meetings/${id}/follow-up-email-draft`, {
+      method: "POST"
+    });
+  },
+  createNotionDraft(id: number) {
+    return request<NotionDraftResponse>(`/meetings/${id}/notion-draft`, {
       method: "POST"
     });
   },

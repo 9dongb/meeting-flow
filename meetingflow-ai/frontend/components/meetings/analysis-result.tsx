@@ -10,11 +10,19 @@ import type { MeetingAnalysisResult } from "@/types";
 export function AnalysisResult({
   result,
   generatingEmailDraft = false,
-  onGenerateEmailDraft
+  generatingNotionDraft = false,
+  notionConnected = false,
+  onGenerateEmailDraft,
+  onGenerateNotionDraft,
+  onConnectNotion
 }: {
   result: MeetingAnalysisResult;
   generatingEmailDraft?: boolean;
+  generatingNotionDraft?: boolean;
+  notionConnected?: boolean;
   onGenerateEmailDraft?: () => void | Promise<void>;
+  onGenerateNotionDraft?: () => void | Promise<void>;
+  onConnectNotion?: () => void;
 }) {
   const isAnalyzable = result.is_analyzable ?? true;
 
@@ -154,11 +162,11 @@ export function AnalysisResult({
                 type="button"
                 variant="secondary"
                 className="h-12 px-4 text-sm sm:text-base [&>span]:whitespace-nowrap"
-                disabled
-                title="Notion 초안 작성은 준비 중입니다."
+                disabled={generatingNotionDraft || (!notionConnected && !onConnectNotion) || (notionConnected && !onGenerateNotionDraft)}
+                onClick={() => (notionConnected ? void onGenerateNotionDraft?.() : onConnectNotion?.())}
               >
-                <FileText className="h-5 w-5" />
-                <span>Notion 초안 작성</span>
+                <FileText className={`h-5 w-5 ${generatingNotionDraft ? "animate-pulse" : ""}`} />
+                <span>{generatingNotionDraft ? "Notion 작성 중" : notionConnected ? "Notion 초안 작성" : "Notion 연결"}</span>
               </Button>
             </div>
           </CardContent>

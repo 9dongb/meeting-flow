@@ -2,20 +2,20 @@
 
 import { AlertTriangle, CalendarClock, CheckCircle2, Copy, FileText, Users } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { ActionKanbanBoard } from "@/components/meetings/action-kanban";
 import { MeetingActionsMenu } from "@/components/meetings/meeting-actions-menu";
-import { MeetingEditForm } from "@/components/meetings/meeting-edit-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState, Feedback, LoadingState } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
-import { formatDate, getDueState, isDueSoon } from "@/lib/utils";
-import type { ActionItemWithMeeting, ActionStatus, GoogleCalendarStatus, Meeting, MeetingUpdatePayload, Team, TeamMember } from "@/types";
+import { formatDate, isDueSoon } from "@/lib/utils";
+import type { ActionItemWithMeeting, ActionStatus, GoogleCalendarStatus, Meeting, Team, TeamMember } from "@/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 const MAX_VISIBLE_COLLABORATORS = 4;
@@ -27,6 +27,7 @@ const avatarStyles = [
 ];
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [actionItems, setActionItems] = useState<ActionItemWithMeeting[]>([]);
   const [team, setTeam] = useState<Team | null>(null);
@@ -35,7 +36,6 @@ export default function DashboardPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
-  const [editingMeetingId, setEditingMeetingId] = useState<number | null>(null);
   const [savingMeetingId, setSavingMeetingId] = useState<number | null>(null);
   const [dueSoonFilterActive, setDueSoonFilterActive] = useState(false);
 
@@ -114,25 +114,6 @@ export default function DashboardPage() {
       setError(err instanceof Error ? err.message : "액션 아이템 삭제에 실패했습니다.");
     } finally {
       setUpdatingId(null);
-    }
-  }
-
-  async function updateMeeting(meeting: Meeting, payload: MeetingUpdatePayload) {
-    setSavingMeetingId(meeting.id);
-    setMessage("");
-    setError("");
-    try {
-      const updated = await api.updateMeeting(meeting.id, payload);
-      setMeetings((current) => current.map((candidate) => (candidate.id === meeting.id ? updated : candidate)));
-      setActionItems((current) =>
-        current.map((item) => (item.meeting_id === meeting.id ? { ...item, meeting_title: updated.title, meeting_date: updated.meeting_date } : item))
-      );
-      setEditingMeetingId(null);
-      setMessage("회의 정보를 수정했습니다.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "회의 수정에 실패했습니다.");
-    } finally {
-      setSavingMeetingId(null);
     }
   }
 
@@ -225,26 +206,16 @@ export default function DashboardPage() {
                   {meetings.slice(0, 5).map((meeting) => (
                     <div key={meeting.id} className="px-5 py-4 transition hover:bg-slate-50">
                       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-                        <Link href={`/meetings/${meeting.id}`} className="min-w-0">
+                        <Link href={`/meetings/${meeting.id}/analysis`} className="min-w-0">
                           <p className="truncate font-medium">{meeting.title}</p>
                           <p className="mt-1 text-sm text-slate-500">{formatDate(meeting.meeting_date)}</p>
                         </Link>
                         <MeetingActionsMenu
                           disabled={savingMeetingId === meeting.id}
-                          onEdit={() => setEditingMeetingId(meeting.id)}
+                          onEdit={() => router.push(`/meetings/${meeting.id}/analysis?edit=1`)}
                           onDelete={() => void deleteMeeting(meeting)}
                         />
                       </div>
-                      {editingMeetingId === meeting.id ? (
-                        <div className="mt-4 rounded-md border border-border bg-white p-3">
-                          <MeetingEditForm
-                            meeting={meeting}
-                            saving={savingMeetingId === meeting.id}
-                            onCancel={() => setEditingMeetingId(null)}
-                            onSubmit={(payload) => updateMeeting(meeting, payload)}
-                          />
-                        </div>
-                      ) : null}
                     </div>
                   ))}
                 </div>
@@ -374,7 +345,6 @@ function DueSoonSummary({
   onToggleDueSoonFilter: () => void;
 }) {
   const firstDue = dueSoon[0];
-  const firstDueState = getDueState(firstDue?.due_date, firstDue?.status);
 
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -396,8 +366,8 @@ function DueSoonSummary({
         <span className="truncate">
           {firstDue
             ? dueSoonFilterActive
-              ? `마감 임박 필터 적용 중 · ${filteredCount}개`
-              : `마감 임박 3일 이내 · ${dueSoon.length}개 · ${firstDueState.label}`
+              ? `가까운 마감 ${filteredCount}개`
+              : `가까운 마감 ${dueSoon.length}개`
             : "마감 임박 항목 없음"}
         </span>
       </button>

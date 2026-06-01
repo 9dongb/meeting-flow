@@ -90,6 +90,9 @@ def test_google_auth_and_calendar_status_defaults(client: TestClient) -> None:
         "skipped_count": 0,
         "last_error": None,
     }
+    notion_status = client.get("/integrations/notion/status")
+    assert notion_status.status_code == 200
+    assert notion_status.json() == {"connected": False, "workspace_name": None, "owner_email": None}
 
 
 def test_protected_routes_require_authentication(client: TestClient) -> None:
@@ -98,7 +101,9 @@ def test_protected_routes_require_authentication(client: TestClient) -> None:
     assert client.get("/meetings/1").status_code == 401
     assert client.post("/meetings/1/analyze").status_code == 401
     assert client.post("/meetings/1/follow-up-email-draft").status_code == 401
+    assert client.post("/meetings/1/notion-draft").status_code == 401
     assert client.get("/meetings/1/action-items").status_code == 401
+    assert client.get("/integrations/notion/status").status_code == 401
 
 
 def test_create_get_analyze_and_update_action_item(client: TestClient) -> None:
@@ -185,6 +190,60 @@ def test_create_get_analyze_and_update_action_item(client: TestClient) -> None:
     delete_response = client.delete(f"/meetings/{meeting_id}")
     assert delete_response.status_code == 204
     assert client.get(f"/meetings/{meeting_id}").status_code == 404
+
+
+def test_notion_oauth_status_and_draft_creation(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.api.routes import notion as notion_route
+    from app.services.integrations.notion import NotionDraftService
+
+    register(client)
+    meeting_id = create_meeting(client)
+    client.post(f"/meetings/{meeting_id}/analyze")
+
+    unconnected_response = client.post(f"/meetings/{meeting_id}/notion-draft")
+    assert unconnected_response.status_code == 409
+
+    monkeypatch.setattr(
+        notion_route,
+        "exchange_code_for_notion_token",
+        lambda code, redirect_uri: {
+            "access_token": "notion-access-token",
+            "refresh_token": "notion-refresh-token",
+            "workspace_id": "workspace-1",
+            "workspace_name": "Product Workspace",
+            "bot_id": "bot-1",
+            "owner": {"user": {"person": {"email": "owner@example.com"}}},
+        },
+    )
+    client.cookies.set(notion_route.NOTION_STATE_COOKIE, "state-1")
+    callback_response = client.get(
+        "/integrations/notion/callback?code=code-1&state=state-1",
+        follow_redirects=False,
+    )
+    assert callback_response.status_code == 302
+
+    status_response = client.get("/integrations/notion/status")
+    assert status_response.status_code == 200
+    assert status_response.json() == {
+        "connected": True,
+        "workspace_name": "Product Workspace",
+        "owner_email": "owner@example.com",
+    }
+
+    monkeypatch.setattr(
+        NotionDraftService,
+        "_create_page",
+        lambda self, access_token, title, markdown: {
+            "id": "page-1",
+            "url": "https://www.notion.so/page-1",
+        },
+    )
+    draft_response = client.post(f"/meetings/{meeting_id}/notion-draft")
+    assert draft_response.status_code == 200
+    draft = draft_response.json()
+    assert draft["page_id"] == "page-1"
+    assert draft["url"] == "https://www.notion.so/page-1"
+    assert draft["log"]["status"] == "success"
 
 
 def test_users_cannot_access_each_others_data(client: TestClient) -> None:

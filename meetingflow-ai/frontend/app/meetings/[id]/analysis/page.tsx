@@ -21,8 +21,11 @@ import type {
   FollowUpEmailDraft,
   Meeting,
   MeetingAnalysisResult,
-  MeetingAnalysisUpdatePayload
+  MeetingAnalysisUpdatePayload,
+  NotionStatus
 } from "@/types";
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
 export default function MeetingAnalysisPage() {
   const params = useParams<{ id: string }>();
@@ -31,18 +34,22 @@ export default function MeetingAnalysisPage() {
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [storedAnalysis, setStoredAnalysis] = useState<MeetingAnalysisResult | null>(null);
   const [, setLatestEmailDraft] = useState<FollowUpEmailDraft | null>(null);
+  const [notionStatus, setNotionStatus] = useState<NotionStatus | null>(null);
+  const [latestNotionUrl, setLatestNotionUrl] = useState<string | null>(null);
   const [showTranscriptModal, setShowTranscriptModal] = useState(false);
   const [editingAnalysis, setEditingAnalysis] = useState(false);
   const [loading, setLoading] = useState(true);
   const [savingAnalysis, setSavingAnalysis] = useState(false);
   const [deletingMeeting, setDeletingMeeting] = useState(false);
   const [generatingEmailDraft, setGeneratingEmailDraft] = useState(false);
+  const [generatingNotionDraft, setGeneratingNotionDraft] = useState(false);
   const [error, setError] = useState("");
   const [draftError, setDraftError] = useState("");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
     if (!meetingId) return;
+    setEditingAnalysis(new URLSearchParams(window.location.search).get("edit") === "1");
 
     const cached = window.sessionStorage.getItem(`meetingflow_analysis_${meetingId}`);
     if (cached) {
@@ -53,9 +60,11 @@ export default function MeetingAnalysisPage() {
       }
     }
 
-    api
-      .getMeeting(meetingId)
-      .then(setMeeting)
+    Promise.all([api.getMeeting(meetingId), api.getNotionStatus()])
+      .then(([meetingData, notionData]) => {
+        setMeeting(meetingData);
+        setNotionStatus(notionData);
+      })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
   }, [meetingId]);
@@ -89,6 +98,27 @@ export default function MeetingAnalysisPage() {
       setDraftError(err instanceof Error ? err.message : "후속 이메일 초안 작성에 실패했습니다.");
     } finally {
       setGeneratingEmailDraft(false);
+    }
+  }
+
+  function connectNotion() {
+    window.location.href = `${API_BASE_URL}/integrations/notion/connect`;
+  }
+
+  async function generateNotionDraft() {
+    if (!meetingId) return;
+    setGeneratingNotionDraft(true);
+    setDraftError("");
+    setMessage("");
+    setLatestNotionUrl(null);
+    try {
+      const draft = await api.createNotionDraft(meetingId);
+      setLatestNotionUrl(draft.url ?? null);
+      setMessage("Notion 회의록 초안을 작성했습니다.");
+    } catch (err) {
+      setDraftError(err instanceof Error ? err.message : "Notion 초안 작성에 실패했습니다.");
+    } finally {
+      setGeneratingNotionDraft(false);
     }
   }
 
@@ -140,6 +170,13 @@ export default function MeetingAnalysisPage() {
       ) : (
         <div className="space-y-6">
           {message ? <Feedback variant="success">{message}</Feedback> : null}
+          {latestNotionUrl ? (
+            <Feedback variant="success">
+              <a className="font-medium underline underline-offset-2" href={latestNotionUrl} target="_blank" rel="noreferrer">
+                Notion에서 초안 열기
+              </a>
+            </Feedback>
+          ) : null}
           {draftError ? <Feedback variant="error">{draftError}</Feedback> : null}
           <div className="flex flex-col justify-between gap-4 rounded-md border border-border bg-white px-5 py-5 shadow-sm lg:flex-row lg:items-start">
             <div>
@@ -171,7 +208,11 @@ export default function MeetingAnalysisPage() {
             <AnalysisResult
               result={result}
               generatingEmailDraft={generatingEmailDraft}
+              generatingNotionDraft={generatingNotionDraft}
+              notionConnected={Boolean(notionStatus?.connected)}
               onGenerateEmailDraft={generateEmailDraft}
+              onGenerateNotionDraft={generateNotionDraft}
+              onConnectNotion={connectNotion}
             />
           )}
 

@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     google_client_secret: str | None = None
     google_login_redirect_uri: str = "http://localhost:8000/auth/google/callback"
     google_calendar_redirect_uri: str = "http://localhost:8000/integrations/google-calendar/callback"
+    notion_client_id: str | None = None
+    notion_client_secret: str | None = None
+    notion_redirect_uri: str = "http://localhost:8000/integrations/notion/callback"
+    notion_authorization_url: str = "https://api.notion.com/v1/oauth/authorize"
+    notion_api_version: str = "2026-03-11"
     openai_api_key: str | None = None
     openai_model: str = "gpt-4o-mini"
     openai_base_url: str = "https://api.openai.com/v1"

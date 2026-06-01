@@ -23,3 +23,5 @@ class IntegrationType(StrEnum):
 class IntegrationStatus(StrEnum):
     mock_success = "mock_success"
     mock_failed = "mock_failed"
+    success = "success"
+    failed = "failed"

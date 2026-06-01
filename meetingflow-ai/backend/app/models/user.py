@@ -22,4 +22,5 @@ class User(Base):
     team_memberships: Mapped[list["TeamMembership"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     active_team: Mapped["Team | None"] = relationship(foreign_keys=[active_team_id])
     google_account: Mapped["UserGoogleAccount | None"] = relationship(back_populates="user", cascade="all, delete-orphan")
+    notion_account: Mapped["UserNotionAccount | None"] = relationship(back_populates="user", cascade="all, delete-orphan")
     calendar_links: Mapped[list["ActionItemCalendarLink"]] = relationship(back_populates="user", cascade="all, delete-orphan")

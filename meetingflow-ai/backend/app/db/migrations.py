@@ -24,12 +24,39 @@ def run_lightweight_migrations(engine: Engine) -> None:
         if "active_team_id" not in user_columns:
             connection.execute(text("ALTER TABLE users ADD COLUMN active_team_id INTEGER"))
 
+        table_names = inspector.get_table_names()
+        if "user_notion_accounts" not in table_names:
+            connection.execute(
+                text(
+                    """
+                    CREATE TABLE user_notion_accounts (
+                        id INTEGER NOT NULL,
+                        user_id INTEGER NOT NULL,
+                        workspace_id VARCHAR(255) NOT NULL,
+                        workspace_name VARCHAR(255),
+                        bot_id VARCHAR(255),
+                        owner_email VARCHAR(320),
+                        access_token_encrypted TEXT,
+                        refresh_token_encrypted TEXT,
+                        created_at DATETIME NOT NULL,
+                        updated_at DATETIME NOT NULL,
+                        PRIMARY KEY (id),
+                        FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE,
+                        UNIQUE (user_id)
+                    )
+                    """
+                )
+            )
+            connection.execute(text("CREATE INDEX ix_user_notion_accounts_user_id ON user_notion_accounts (user_id)"))
+            connection.execute(
+                text("CREATE INDEX ix_user_notion_accounts_workspace_id ON user_notion_accounts (workspace_id)")
+            )
+
         meeting_columns = {column["name"] for column in inspector.get_columns("meetings")}
         if "team_id" not in meeting_columns:
             connection.execute(text("ALTER TABLE meetings ADD COLUMN team_id INTEGER"))
 
-        BaseTableCheck = inspector.get_table_names()
-        if "user_google_accounts" not in BaseTableCheck or "action_item_calendar_links" not in BaseTableCheck:
+        if "user_google_accounts" not in table_names or "action_item_calendar_links" not in table_names:
             return
         google_account_columns = {column["name"] for column in inspector.get_columns("user_google_accounts")}
         if "granted_scopes" not in google_account_columns:

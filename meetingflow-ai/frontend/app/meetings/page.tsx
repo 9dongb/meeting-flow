@@ -2,24 +2,24 @@
 
 import { FileText, PlusCircle } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { MeetingActionsMenu } from "@/components/meetings/meeting-actions-menu";
-import { MeetingEditForm } from "@/components/meetings/meeting-edit-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState, Feedback, LoadingState } from "@/components/ui/feedback";
 import { api } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
-import type { Meeting, MeetingUpdatePayload } from "@/types";
+import type { Meeting } from "@/types";
 
 export default function MeetingsPage() {
+  const router = useRouter();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [editingId, setEditingId] = useState<number | null>(null);
   const [savingId, setSavingId] = useState<number | null>(null);
 
   useEffect(() => {
@@ -29,22 +29,6 @@ export default function MeetingsPage() {
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
-
-  async function updateMeeting(meeting: Meeting, payload: MeetingUpdatePayload) {
-    setSavingId(meeting.id);
-    setMessage("");
-    setError("");
-    try {
-      const updated = await api.updateMeeting(meeting.id, payload);
-      setMeetings((current) => current.map((candidate) => (candidate.id === meeting.id ? updated : candidate)));
-      setEditingId(null);
-      setMessage("회의 정보를 수정했습니다.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "회의 수정에 실패했습니다.");
-    } finally {
-      setSavingId(null);
-    }
-  }
 
   async function deleteMeeting(meeting: Meeting) {
     if (!window.confirm("이 회의와 연결된 액션 아이템을 모두 삭제할까요?")) return;
@@ -98,7 +82,7 @@ export default function MeetingsPage() {
               {meetings.map((meeting) => (
                 <div key={meeting.id} className="px-5 py-4">
                   <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-                    <Link href={`/meetings/${meeting.id}`} className="min-w-0">
+                    <Link href={`/meetings/${meeting.id}/analysis`} className="min-w-0">
                       <p className="truncate font-medium">{meeting.title}</p>
                       <p className="mt-1 text-sm text-slate-500">
                         {formatDate(meeting.meeting_date)} · 액션 아이템 {(meeting.action_items ?? []).length}개
@@ -106,20 +90,10 @@ export default function MeetingsPage() {
                     </Link>
                     <MeetingActionsMenu
                       disabled={savingId === meeting.id}
-                      onEdit={() => setEditingId(meeting.id)}
+                      onEdit={() => router.push(`/meetings/${meeting.id}/analysis?edit=1`)}
                       onDelete={() => void deleteMeeting(meeting)}
                     />
                   </div>
-                  {editingId === meeting.id ? (
-                    <div className="mt-4 rounded-md border border-border bg-white p-4">
-                      <MeetingEditForm
-                        meeting={meeting}
-                        saving={savingId === meeting.id}
-                        onCancel={() => setEditingId(null)}
-                        onSubmit={(payload) => updateMeeting(meeting, payload)}
-                      />
-                    </div>
-                  ) : null}
                 </div>
               ))}
             </div>
