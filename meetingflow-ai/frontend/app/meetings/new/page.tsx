@@ -7,6 +7,7 @@ import { ChangeEvent, FormEvent, useState } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
+import { AiWorkingState } from "@/components/ui/ai-working-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState, Feedback } from "@/components/ui/feedback";
 import { Input, Textarea } from "@/components/ui/input";
@@ -216,8 +217,16 @@ export default function NewMeetingPage() {
               {error ? <Feedback variant="error">{error}</Feedback> : null}
               {success ? <Feedback variant="success">{success}</Feedback> : null}
 
-              <Button className="w-full" disabled={loading || fileLoading}>
-                <Sparkles className="h-4 w-4" />
+              {loading ? (
+                <AiWorkingState
+                  title="AI가 회의록을 분석하고 있습니다"
+                  description="요약, 결정사항, 담당자별 액션 아이템과 후속 확인 사항을 함께 정리하는 중입니다."
+                  label="Analyzing"
+                />
+              ) : null}
+
+              <Button className={`w-full ${loading ? "ai-button-working" : ""}`} disabled={loading || fileLoading}>
+                <Sparkles className={`h-4 w-4 ${loading ? "ai-sparkle" : ""}`} />
                 {loading ? "AI 분석 중" : fileLoading ? "파일 읽는 중" : "AI 분석 시작"}
               </Button>
             </form>

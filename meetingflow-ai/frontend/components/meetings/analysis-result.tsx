@@ -2,6 +2,7 @@ import { AlertTriangle, FileText, Mail, RefreshCw } from "lucide-react";
 
 import { PriorityBadge } from "@/components/meetings/status-badge";
 import { Badge } from "@/components/ui/badge";
+import { AiWorkingState } from "@/components/ui/ai-working-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { confidenceLabel } from "@/lib/utils";
@@ -25,6 +26,7 @@ export function AnalysisResult({
   onConnectNotion?: () => void;
 }) {
   const isAnalyzable = result.is_analyzable ?? true;
+  const activeDraftType = generatingEmailDraft ? "email" : generatingNotionDraft ? "notion" : null;
 
   if (!isAnalyzable) {
     return (
@@ -148,24 +150,37 @@ export function AnalysisResult({
               후속 작업
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
+            {activeDraftType ? (
+              <AiWorkingState
+                compact
+                title={activeDraftType === "email" ? "메일 초안을 작성하고 있습니다" : "Notion 초안을 작성하고 있습니다"}
+                description={
+                  activeDraftType === "email"
+                    ? "회의 요약과 액션 아이템을 후속 메일 문장으로 다듬는 중입니다."
+                    : "회의 요약, 결정사항, 액션 아이템을 Notion 페이지 구조로 정리하는 중입니다."
+                }
+                label={activeDraftType === "email" ? "Drafting mail" : "Drafting Notion"}
+                icon={activeDraftType === "email" ? Mail : FileText}
+              />
+            ) : null}
             <div className="grid gap-3 sm:grid-cols-2">
               <Button
-                className="h-12 px-4 text-sm sm:text-base [&>span]:whitespace-nowrap"
+                className={`h-12 px-4 text-sm sm:text-base [&>span]:whitespace-nowrap ${generatingEmailDraft ? "ai-button-working" : ""}`}
                 disabled={generatingEmailDraft || !onGenerateEmailDraft}
                 onClick={() => void onGenerateEmailDraft?.()}
               >
-                <Mail className={`h-5 w-5 ${generatingEmailDraft ? "animate-pulse" : ""}`} />
+                <Mail className={`h-5 w-5 ${generatingEmailDraft ? "ai-sparkle" : ""}`} />
                 <span>{generatingEmailDraft ? "메일 초안 작성 중" : "메일 초안 작성"}</span>
               </Button>
               <Button
                 type="button"
                 variant="secondary"
-                className="h-12 px-4 text-sm leading-4 sm:text-base [&>span]:text-center"
+                className={`h-12 px-4 text-sm leading-4 sm:text-base [&>span]:text-center ${generatingNotionDraft ? "ai-button-working" : ""}`}
                 disabled={generatingNotionDraft || (!notionConnected && !onConnectNotion) || (notionConnected && !onGenerateNotionDraft)}
                 onClick={() => (notionConnected ? void onGenerateNotionDraft?.() : onConnectNotion?.())}
               >
-                <FileText className={`h-5 w-5 ${generatingNotionDraft ? "animate-pulse" : ""}`} />
+                <FileText className={`h-5 w-5 ${generatingNotionDraft ? "ai-sparkle" : ""}`} />
                 <span>{generatingNotionDraft ? "Notion 작성 중" : notionConnected ? "Notion 초안 작성" : "Notion 연결 후 초안 생성"}</span>
               </Button>
             </div>
