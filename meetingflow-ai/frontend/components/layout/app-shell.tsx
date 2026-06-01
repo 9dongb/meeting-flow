@@ -130,7 +130,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </span>
                 <span>MeetingFlow AI</span>
               </Link>
-              <div className="hidden text-sm font-medium text-slate-500 lg:block">회의 후속 업무 실행 콘솔</div>
+              <div className="hidden text-sm font-medium text-slate-500 lg:block">MeetingFlow</div>
               <nav className="hidden items-center gap-1 md:flex lg:hidden">
                 <Link href="/dashboard" className="inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm hover:bg-[#f0f0f2]">
                   <LayoutDashboard className="h-4 w-4" />
@@ -141,43 +141,43 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </Link>
               </nav>
               <div className="flex items-center gap-1">
-            <div ref={profileRef} className="relative">
-              <button
-                type="button"
-                className="inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm hover:bg-[#f0f0f2] focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                onClick={() => setProfileOpen((open) => !open)}
-                aria-expanded={profileOpen}
-              >
-                <UserRound className="h-4 w-4" />
-                <span className="hidden max-w-24 truncate sm:inline">{currentUser?.name ?? "프로필"}</span>
-              </button>
-              {profileOpen ? (
-                <div className="absolute right-0 top-11 z-50 w-72 rounded-md border border-border bg-white p-3 text-sm shadow-lg">
-                  <form className="space-y-3" onSubmit={saveProfile}>
-                    <div>
-                      <p className="font-semibold text-slate-900">내 프로필</p>
-                      <p className="mt-1 truncate text-xs text-slate-500">{currentUser?.email}</p>
+                <div ref={profileRef} className="relative">
+                  <button
+                    type="button"
+                    className="inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm hover:bg-[#f0f0f2] focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                    onClick={() => setProfileOpen((open) => !open)}
+                    aria-expanded={profileOpen}
+                  >
+                    <UserRound className="h-4 w-4" />
+                    <span className="hidden max-w-24 truncate sm:inline">{currentUser?.name ?? "프로필"}</span>
+                  </button>
+                  {profileOpen ? (
+                    <div className="absolute right-0 top-11 z-50 w-72 rounded-md border border-border bg-white p-3 text-sm shadow-lg">
+                      <form className="space-y-3" onSubmit={saveProfile}>
+                        <div>
+                          <p className="font-semibold text-slate-900">내 프로필</p>
+                          <p className="mt-1 truncate text-xs text-slate-500">{currentUser?.email}</p>
+                        </div>
+                        <label className="block space-y-2 text-xs font-medium text-slate-600">
+                          <span>이름</span>
+                          <Input value={profileName} onChange={(event) => setProfileName(event.target.value)} required />
+                        </label>
+                        {profileError ? <p className="text-xs text-red-600">{profileError}</p> : null}
+                        <Button className="w-full" disabled={savingProfile || !profileName.trim()}>
+                          <Save className="h-4 w-4" />
+                          {savingProfile ? "저장 중" : "저장"}
+                        </Button>
+                      </form>
                     </div>
-                    <label className="block space-y-2 text-xs font-medium text-slate-600">
-                      <span>이름</span>
-                      <Input value={profileName} onChange={(event) => setProfileName(event.target.value)} required />
-                    </label>
-                    {profileError ? <p className="text-xs text-red-600">{profileError}</p> : null}
-                    <Button className="w-full" disabled={savingProfile || !profileName.trim()}>
-                      <Save className="h-4 w-4" />
-                      {savingProfile ? "저장 중" : "저장"}
-                    </Button>
-                  </form>
+                  ) : null}
                 </div>
-              ) : null}
-            </div>
-            <Button
-              variant="ghost"
-              title="로그아웃"
-              onClick={logout}
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
+                <Button
+                  variant="ghost"
+                  title="로그아웃"
+                  onClick={logout}
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           </header>
