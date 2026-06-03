@@ -1,0 +1,87 @@
+name: meetingflow-ai
+
+services:
+  backend:
+    image: meetingflow-ai-backend:latest
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      APP_NAME: ${APP_NAME:-MeetingFlow AI}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////app/data/meetingflow.db}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-this-secret-before-deploy}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-10080}
+      AUTH_COOKIE_NAME: ${AUTH_COOKIE_NAME:-meetingflow_access_token}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
+      AUTH_COOKIE_SAMESITE: ${AUTH_COOKIE_SAMESITE:-lax}
+      BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS:-http://localhost:3000}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:3000}
+      TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_LOGIN_REDIRECT_URI: ${GOOGLE_LOGIN_REDIRECT_URI:-http://localhost:8000/auth/google/callback}
+      GOOGLE_CALENDAR_REDIRECT_URI: ${GOOGLE_CALENDAR_REDIRECT_URI:-http://localhost:8000/integrations/google-calendar/callback}
+      NOTION_CLIENT_ID: ${NOTION_CLIENT_ID:-}
+      NOTION_CLIENT_SECRET: ${NOTION_CLIENT_SECRET:-}
+      NOTION_REDIRECT_URI: ${NOTION_REDIRECT_URI:-http://localhost:8000/integrations/notion/callback}
+      NOTION_AUTHORIZATION_URL: ${NOTION_AUTHORIZATION_URL:-https://api.notion.com/v1/oauth/authorize}
+      NOTION_API_VERSION: ${NOTION_API_VERSION:-2026-03-11}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      OPENAI_TIMEOUT_SECONDS: ${OPENAI_TIMEOUT_SECONDS:-60}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-llama-3.3-70b-versatile}
+      GROQ_BASE_URL: ${GROQ_BASE_URL:-https://api.groq.com/openai/v1}
+      GROQ_TIMEOUT_SECONDS: ${GROQ_TIMEOUT_SECONDS:-45}
+      AI_PROVIDER: ${AI_PROVIDER:-openai}
+      AI_MOCK_FALLBACK: ${AI_MOCK_FALLBACK:-true}
+      AI_MAX_TRANSCRIPT_CHARS: ${AI_MAX_TRANSCRIPT_CHARS:-20000}
+      PINECONE_API_KEY: ${PINECONE_API_KEY:-}
+      PINECONE_INDEX_NAME: ${PINECONE_INDEX_NAME:-}
+      PINECONE_NAMESPACE: ${PINECONE_NAMESPACE:-meetingflow-production}
+      RAG_ENABLED: ${RAG_ENABLED:-false}
+    ports:
+      - "${BACKEND_BIND:-127.0.0.1}:${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - backend_data:/app/data
+    mem_limit: ${BACKEND_MEM_LIMIT:-512m}
+    memswap_limit: ${BACKEND_MEMSWAP_LIMIT:-1024m}
+    deploy:
+      resources:
+        limits:
+          memory: ${BACKEND_MEM_LIMIT:-512m}
+    networks:
+      - meetingflow
+
+  frontend:
+    image: meetingflow-ai-frontend:latest
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+    ports:
+      - "${FRONTEND_BIND:-127.0.0.1}:${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    mem_limit: ${FRONTEND_MEM_LIMIT:-384m}
+    memswap_limit: ${FRONTEND_MEMSWAP_LIMIT:-768m}
+    deploy:
+      resources:
+        limits:
+          memory: ${FRONTEND_MEM_LIMIT:-384m}
+    networks:
+      - meetingflow
+
+networks:
+  meetingflow:
+    driver: bridge
+
+volumes:
+  backend_data:

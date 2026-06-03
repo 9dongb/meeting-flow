@@ -18,6 +18,13 @@ class UserCreate(BaseModel):
             raise ValueError("Name is required")
         return value
 
+    @field_validator("password")
+    @classmethod
+    def validate_bcrypt_password_length(cls, value: str) -> str:
+        if len(value.encode("utf-8")) > 72:
+            raise ValueError("Password must be 72 bytes or fewer")
+        return value
+
 
 class UserUpdate(BaseModel):
     name: str = Field(min_length=1, max_length=120)

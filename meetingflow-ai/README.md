@@ -69,6 +69,39 @@ python scripts/seed_demo.py
 
 데모 계정은 `demo@meetingflow.ai` / `password123`입니다.
 
+## Docker 배포
+
+Docker Compose는 백엔드 FastAPI, 프론트엔드 Next.js, SQLite 데이터 볼륨을 함께 실행합니다.
+
+```bash
+cd meetingflow-ai
+cp .env.docker.example .env.docker
+# .env.docker의 JWT_SECRET_KEY, origin, OAuth/API key 값을 배포 환경에 맞게 수정
+chmod 600 .env.docker
+docker compose --env-file .env.docker up --build -d
+```
+
+기본 포트는 프론트엔드 `http://localhost:3000`, 백엔드 `http://localhost:8000`입니다.
+데모 데이터를 넣으려면 컨테이너가 실행 중인 상태에서 다음 명령을 사용합니다.
+
+```bash
+docker compose --env-file .env.docker exec backend python scripts/seed_demo.py
+```
+
+운영 배포에서는 다음 값을 반드시 확인하세요.
+
+- `JWT_SECRET_KEY`: `openssl rand -hex 32` 같은 강한 랜덤 값 사용
+- `NEXT_PUBLIC_API_BASE_URL`: 브라우저에서 접근 가능한 백엔드 URL. 이 값은 프론트엔드 빌드 시점에 반영되므로 변경 후에는 `docker compose build frontend`가 필요합니다.
+- `BACKEND_CORS_ORIGINS`, `FRONTEND_BASE_URL`: 실제 프론트엔드 origin과 일치
+- `AUTH_COOKIE_SECURE=true`: HTTPS 뒤에서 운영할 때 권장
+- `GOOGLE_*_REDIRECT_URI`, `NOTION_REDIRECT_URI`: 외부 OAuth 콘솔에 등록한 callback URL과 일치
+
+Compose 파일은 기본적으로 호스트의 `127.0.0.1`에만 포트를 바인딩합니다. VPS나 서버에서 직접 공개하려면 Nginx/Caddy/Traefik 같은 reverse proxy로 HTTPS를 종료하고, 필요할 때만 `FRONTEND_BIND` 또는 `BACKEND_BIND`를 조정하세요.
+
+OCI E2.1.Micro 같은 1GB RAM 인스턴스를 고려해 기본 런타임 메모리 제한은 백엔드 `512m`, 프론트엔드 `384m`로 설정되어 있습니다. 더 큰 인스턴스에서는 `.env.docker`의 `BACKEND_MEM_LIMIT`, `FRONTEND_MEM_LIMIT` 값을 올릴 수 있습니다.
+
+SQLite 파일은 `backend_data` Docker volume에 저장됩니다. 단일 인스턴스 배포에는 간단하고 안정적이지만, 다중 replica나 무중단 schema migration이 필요한 운영 단계에서는 PostgreSQL 전환과 Alembic migration 정리가 필요합니다.
+
 ## 품질 점검
 
 백엔드:
