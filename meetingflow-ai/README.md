@@ -130,6 +130,45 @@ docker compose --env-file .env.docker up -d --build
 
 Actions workflow에는 API key를 넣지 않습니다. 실제 `OPENAI_API_KEY`, OAuth secret, `JWT_SECRET_KEY`는 서버의 `.env.docker`에만 둡니다.
 
+## Nginx reverse proxy
+
+`nginx-meetingflow.conf`는 OCI 서버에서 프론트엔드와 백엔드를 외부 도메인으로 노출하기 위한 예시입니다.
+
+권장 도메인 구성:
+
+- `https://<frontend-domain>` -> `127.0.0.1:3000`
+- `https://<api-domain>` -> `127.0.0.1:8000`
+
+서버에 적용:
+
+```bash
+cd /home/ubuntu/meeting-flow/meetingflow-ai
+sudo cp nginx-meetingflow.conf /etc/nginx/sites-available/meetingflow-ai
+sudo vi /etc/nginx/sites-available/meetingflow-ai
+# __FRONTEND_DOMAIN__, __API_DOMAIN__ 값을 실제 도메인으로 변경
+sudo ln -sf /etc/nginx/sites-available/meetingflow-ai /etc/nginx/sites-enabled/meetingflow-ai
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+Cloudflare가 HTTPS를 종료한다면 HTTP origin 설정으로 사용할 수 있습니다. Nginx가 직접 HTTPS를 종료한다면 다음처럼 인증서를 발급하세요.
+
+```bash
+sudo certbot --nginx -d <frontend-domain> -d <api-domain>
+```
+
+이때 `.env.docker`에는 다음처럼 외부 주소를 맞춰야 합니다.
+
+```bash
+NEXT_PUBLIC_API_BASE_URL=https://<api-domain>
+BACKEND_CORS_ORIGINS=https://<frontend-domain>
+FRONTEND_BASE_URL=https://<frontend-domain>
+AUTH_COOKIE_SECURE=true
+```
+
+`NEXT_PUBLIC_API_BASE_URL`은 프론트엔드 빌드 시점에 들어가므로 값을 바꾼 뒤에는 `docker compose --env-file .env.docker up -d --build`로 다시 빌드해야 합니다.
+
 ## 품질 점검
 
 백엔드:
