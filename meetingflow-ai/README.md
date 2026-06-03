@@ -169,6 +169,30 @@ AUTH_COOKIE_SECURE=true
 
 `NEXT_PUBLIC_API_BASE_URL`은 프론트엔드 빌드 시점에 들어가므로 값을 바꾼 뒤에는 `docker compose --env-file .env.docker up -d --build`로 다시 빌드해야 합니다.
 
+도메인이 하나뿐이라면 `nginx-meetingflow-single-domain.conf`를 사용하세요. 예를 들어 `02-demo.aiweb2026.site` 하나로 운영할 때는 `/`는 프론트엔드로, `/auth`, `/meetings`, `/integrations` 같은 API 경로는 백엔드로 라우팅합니다.
+
+```bash
+cd /home/ubuntu/meeting-flow/meetingflow-ai
+sudo cp nginx-meetingflow-single-domain.conf /etc/nginx/sites-available/meetingflow-ai
+sudo sed -i 's/__DOMAIN__/02-demo.aiweb2026.site/g' /etc/nginx/sites-available/meetingflow-ai
+sudo ln -sf /etc/nginx/sites-available/meetingflow-ai /etc/nginx/sites-enabled/meetingflow-ai
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+단일 도메인 방식의 `.env.docker` 예시:
+
+```bash
+NEXT_PUBLIC_API_BASE_URL=https://02-demo.aiweb2026.site
+BACKEND_CORS_ORIGINS=https://02-demo.aiweb2026.site
+FRONTEND_BASE_URL=https://02-demo.aiweb2026.site
+AUTH_COOKIE_SECURE=true
+GOOGLE_LOGIN_REDIRECT_URI=https://02-demo.aiweb2026.site/auth/google/callback
+GOOGLE_CALENDAR_REDIRECT_URI=https://02-demo.aiweb2026.site/integrations/google-calendar/callback
+NOTION_REDIRECT_URI=https://02-demo.aiweb2026.site/integrations/notion/callback
+```
+
 ## 품질 점검
 
 백엔드:
