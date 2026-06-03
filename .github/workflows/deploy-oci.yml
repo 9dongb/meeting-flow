@@ -1,0 +1,122 @@
+name: Deploy MeetingFlow AI to Oracle
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-oci-main
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show deployment commit
+        run: |
+          echo "Deploy commit: ${{ github.sha }}"
+          echo "Triggered by: ${{ github.actor }}"
+          echo "Message: ${{ github.event.head_commit.message }}"
+
+      - name: Deploy on Oracle server
+        uses: appleboy/ssh-action@v1
+        env:
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          DEPLOY_BRANCH: main
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 3223 }}
+          timeout: 60s
+          command_timeout: 15m
+          envs: REPO_URL,DEPLOY_PATH,DEPLOY_BRANCH
+          script: |
+            set -eu
+
+            DEPLOY_PATH="${DEPLOY_PATH:-/home/ubuntu/meeting-flow}"
+            DEPLOY_BRANCH="${DEPLOY_BRANCH:-main}"
+            APP_DIR="$DEPLOY_PATH/meetingflow-ai"
+
+            echo "Deploy started: $(date)"
+            echo "Deploy path: $DEPLOY_PATH"
+
+            mkdir -p "$DEPLOY_PATH"
+            cd "$DEPLOY_PATH"
+
+            if [ ! -d .git ]; then
+              echo "No .git directory found. Initializing repository."
+              git init
+              git remote add origin "$REPO_URL"
+            fi
+
+            echo "Fetching latest code."
+            git fetch origin "$DEPLOY_BRANCH"
+            git reset --hard "origin/$DEPLOY_BRANCH"
+
+            cd "$APP_DIR"
+
+            if [ ! -f .env.docker ]; then
+              echo "Missing $APP_DIR/.env.docker"
+              echo "Create it on the server from .env.docker.example and add production secrets."
+              exit 1
+            fi
+
+            chmod 600 .env.docker
+
+            echo "Building and restarting containers."
+            docker compose --env-file .env.docker up -d --build --remove-orphans
+
+            BACKEND_PORT="$(sed -n 's/^BACKEND_PORT=//p' .env.docker | tail -n 1)"
+            FRONTEND_PORT="$(sed -n 's/^FRONTEND_PORT=//p' .env.docker | tail -n 1)"
+            BACKEND_PORT="${BACKEND_PORT:-8000}"
+            FRONTEND_PORT="${FRONTEND_PORT:-3000}"
+
+            echo "Waiting for backend health check."
+            for i in $(seq 1 12); do
+              if curl -fsS "http://127.0.0.1:${BACKEND_PORT}/health" > /dev/null; then
+                echo "Backend is healthy."
+                break
+              fi
+              if [ "$i" -eq 12 ]; then
+                echo "Backend health check failed."
+                docker compose --env-file .env.docker logs --tail=120 backend
+                exit 1
+              fi
+              echo "Backend not ready yet ($i/12)."
+              sleep 5
+            done
+
+            echo "Waiting for frontend response."
+            for i in $(seq 1 12); do
+              if curl -fsS "http://127.0.0.1:${FRONTEND_PORT}/" > /dev/null; then
+                echo "Frontend is responding."
+                break
+              fi
+              if [ "$i" -eq 12 ]; then
+                echo "Frontend health check failed."
+                docker compose --env-file .env.docker logs --tail=120 frontend
+                exit 1
+              fi
+              echo "Frontend not ready yet ($i/12)."
+              sleep 5
+            done
+
+            echo "Final container status."
+            docker compose --env-file .env.docker ps
+            echo "Deploy completed: $(date)"
+
+      - name: Failure hint
+        if: failure()
+        run: |
+          echo "Deployment failed. SSH into the Oracle server and inspect:"
+          echo "  cd \${DEPLOY_PATH:-/home/ubuntu/meeting-flow}/meetingflow-ai"
+          echo "  docker compose --env-file .env.docker logs --tail=120"
