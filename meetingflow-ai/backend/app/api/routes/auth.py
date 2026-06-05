@@ -6,7 +6,7 @@ from fastapi.responses import RedirectResponse
 from app.api.deps import CurrentUser, DbSession
 from app.core.config import get_settings
 from app.core.security import create_access_token
-from app.crud.google_accounts import upsert_google_account
+from app.crud.google_accounts import get_google_account_by_sub, upsert_google_account
 from app.crud.users import authenticate_user, create_user, get_user_by_email, update_user_name, user_name_from_email
 from app.schemas.auth import AuthResponse, LoginRequest
 from app.schemas.user import UserCreate, UserRead, UserUpdate
@@ -128,19 +128,16 @@ def google_callback(
     if not email or not google_sub:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Google account did not return email/sub")
 
-    user = get_user_by_email(db, email)
+    google_account = get_google_account_by_sub(db, google_sub)
+    user = google_account.user if google_account else get_user_by_email(db, email)
     if not user:
         name = str(userinfo.get("name") or "").strip() or user_name_from_email(email)
-        user = create_user(db, UserCreate(name=name, email=email, password=secrets.token_urlsafe(32)))
+        user = create_user(db, UserCreate(name=name, email=email, password=secrets.token_urlsafe(24)))
     upsert_google_account(
         db,
         user=user,
         google_sub=google_sub,
         email=email,
-        access_token=tokens.get("access_token"),
-        expires_in=tokens.get("expires_in"),
-        granted_scopes=tokens.get("scope"),
-        calendar_scope_granted=False,
     )
 
     redirect = _redirect_frontend("/dashboard")

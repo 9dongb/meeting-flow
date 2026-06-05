@@ -1,0 +1,22 @@
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+meetingflow.db
+
+# Environment
+.env
+.env.local
+.env.docker
+
+# Node
+node_modules/
+.next/
+out/
+npm-debug.log*
+
+# Agent
+AGENTS.md

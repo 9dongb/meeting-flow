@@ -46,6 +46,37 @@ def create_meeting(
     return int(response.json()["id"])
 
 
+def connect_google_calendar(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    email: str = "user@example.com",
+    google_sub: str = "google-sub-1",
+) -> None:
+    from app.api.routes import google_calendar as calendar_route
+
+    monkeypatch.setattr(
+        calendar_route,
+        "exchange_code_for_tokens",
+        lambda code, redirect_uri: {
+            "access_token": "calendar-access-token",
+            "refresh_token": "calendar-refresh-token",
+            "expires_in": 3600,
+            "scope": "openid email profile https://www.googleapis.com/auth/calendar.events",
+        },
+    )
+    monkeypatch.setattr(
+        calendar_route,
+        "fetch_google_userinfo",
+        lambda access_token: {"sub": google_sub, "email": email},
+    )
+    client.cookies.set(calendar_route.GOOGLE_CALENDAR_STATE_COOKIE, "calendar-state")
+    response = client.get(
+        "/integrations/google-calendar/callback?code=calendar-code&state=calendar-state",
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+
+
 def test_health() -> None:
     with TestClient(app) as client:
         response = client.get("/health")
@@ -90,6 +121,135 @@ def test_google_auth_and_calendar_status_defaults(client: TestClient) -> None:
         "skipped_count": 0,
         "last_error": None,
     }
+
+
+def test_google_login_callback_creates_user_and_google_account(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.api.routes import auth as auth_route
+    from app.db.session import get_db
+    from app.models.google_account import UserGoogleAccount
+    from app.models.user import User
+
+    monkeypatch.setattr(
+        auth_route,
+        "exchange_code_for_tokens",
+        lambda code, redirect_uri: {
+            "access_token": "login-access-token",
+            "expires_in": 3600,
+            "scope": "openid email profile https://www.googleapis.com/auth/calendar.events",
+        },
+    )
+    monkeypatch.setattr(
+        auth_route,
+        "fetch_google_userinfo",
+        lambda access_token: {"sub": "google-sub-1", "email": "google-user@gmail.com", "name": "Google User"},
+    )
+    client.cookies.set(auth_route.GOOGLE_LOGIN_STATE_COOKIE, "login-state")
+
+    callback_response = client.get(
+        "/auth/google/callback?code=login-code&state=login-state",
+        follow_redirects=False,
+    )
+    assert callback_response.status_code == 302
+
+    me_response = client.get("/auth/me")
+    assert me_response.status_code == 200
+    assert me_response.json()["email"] == "google-user@gmail.com"
+
+    override_get_db = client.app.dependency_overrides[get_db]
+    db_context = override_get_db()
+    db = next(db_context)
+    try:
+        user = db.query(User).filter_by(email="google-user@gmail.com").one()
+        account = db.query(UserGoogleAccount).filter_by(user_id=user.id).one()
+        assert account.email == "google-user@gmail.com"
+        assert account.google_sub == "google-sub-1"
+        assert account.calendar_scope_granted is False
+        assert account.calendar_sync_enabled is False
+    finally:
+        db_context.close()
+
+
+def test_google_login_preserves_calendar_connection_after_logout(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.api.routes import auth as auth_route
+
+    register(client)
+    connect_google_calendar(client, monkeypatch)
+    client.post("/auth/logout")
+
+    monkeypatch.setattr(
+        auth_route,
+        "exchange_code_for_tokens",
+        lambda code, redirect_uri: {
+            "access_token": "login-access-token",
+            "expires_in": 3600,
+            "scope": "openid email profile https://www.googleapis.com/auth/calendar.events",
+        },
+    )
+    monkeypatch.setattr(
+        auth_route,
+        "fetch_google_userinfo",
+        lambda access_token: {"sub": "google-sub-1", "email": "user@example.com", "name": "테스트 사용자"},
+    )
+    client.cookies.set(auth_route.GOOGLE_LOGIN_STATE_COOKIE, "login-state")
+    assert client.get(
+        "/auth/google/callback?code=login-code&state=login-state",
+        follow_redirects=False,
+    ).status_code == 302
+
+    status_after_login = client.get("/integrations/google-calendar/status")
+    assert status_after_login.status_code == 200
+    assert status_after_login.json()["permission_granted"] is True
+    assert status_after_login.json()["sync_enabled"] is True
+
+
+def test_google_login_uses_existing_calendar_linked_user_when_emails_differ(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.api.routes import auth as auth_route
+
+    register(client, email="meetingflow-user@example.com")
+    connect_google_calendar(client, monkeypatch, email="calendar-owner@gmail.com")
+    client.post("/auth/logout")
+
+    monkeypatch.setattr(
+        auth_route,
+        "exchange_code_for_tokens",
+        lambda code, redirect_uri: {
+            "access_token": "login-access-token",
+            "expires_in": 3600,
+            "scope": "openid email profile https://www.googleapis.com/auth/calendar.events",
+        },
+    )
+    monkeypatch.setattr(
+        auth_route,
+        "fetch_google_userinfo",
+        lambda access_token: {
+            "sub": "google-sub-1",
+            "email": "calendar-owner@gmail.com",
+            "name": "Calendar Owner",
+        },
+    )
+    client.cookies.set(auth_route.GOOGLE_LOGIN_STATE_COOKIE, "login-state")
+    assert client.get(
+        "/auth/google/callback?code=login-code&state=login-state",
+        follow_redirects=False,
+    ).status_code == 302
+
+    me_response = client.get("/auth/me")
+    assert me_response.status_code == 200
+    assert me_response.json()["email"] == "meetingflow-user@example.com"
+
+    status_after_login = client.get("/integrations/google-calendar/status")
+    assert status_after_login.status_code == 200
+    assert status_after_login.json()["permission_granted"] is True
+    assert status_after_login.json()["sync_enabled"] is True
     notion_status = client.get("/integrations/notion/status")
     assert notion_status.status_code == 200
     assert notion_status.json() == {
