@@ -1,6 +1,6 @@
 "use client";
 
-import { Bot, LayoutDashboard, LogOut, Save, UserRound } from "lucide-react";
+import { LayoutDashboard, LogOut, Save, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
@@ -8,6 +8,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AppLogo } from "@/components/layout/app-logo";
 import { api } from "@/lib/api";
 import { clearClientAuthState } from "@/lib/auth";
 import type { User } from "@/types";
@@ -83,9 +84,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="work-surface flex min-h-screen items-center justify-center px-5">
         <div className="ai-pill w-full max-w-sm rounded-md px-5 py-4 text-sm text-slate-600">
           <div className="mb-3 flex items-center gap-2 font-medium">
-            <span className="ai-brand-mark flex h-8 w-8 items-center justify-center rounded-md text-white">
-              <Bot className="h-4 w-4" />
-            </span>
+            <AppLogo />
             로그인 상태를 확인하는 중입니다.
           </div>
           <div className="ai-loader" />
@@ -99,9 +98,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="ai-topbar sticky top-0 z-20 border-b">
         <div className="mx-auto flex min-h-14 max-w-screen-2xl flex-wrap items-center gap-2 px-4 py-2 sm:flex-nowrap sm:px-5 lg:px-8">
           <Link href="/dashboard" className="flex min-w-0 shrink-0 items-center gap-2 rounded-md pr-2 text-sm font-semibold">
-            <span className="ai-brand-mark flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-white shadow-sm">
-              <Bot className="h-4 w-4" />
-            </span>
+            <AppLogo />
             <span className="truncate">MeetingFlow AI</span>
           </Link>
 

@@ -1,11 +1,12 @@
 "use client";
 
-import { ArrowRight, Bot, CalendarClock, CheckCircle2, Mail, ShieldCheck } from "lucide-react";
+import { ArrowRight, CalendarClock, CheckCircle2, Mail, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AppLogo } from "@/components/layout/app-logo";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 
@@ -43,10 +44,8 @@ export default function LoginPage() {
       <section className="flex items-center justify-center border-r border-border bg-white px-6 py-12">
         <Card className="w-full max-w-md shadow-none">
           <CardHeader>
-            <div className="mb-5 flex items-center gap-3">
-              <span className="ai-brand-mark flex h-9 w-9 items-center justify-center rounded-md text-white">
-                <Bot className="h-4 w-4" />
-              </span>
+            <div className="mb-5 flex items-center gap-2">
+              <AppLogo className="h-14 w-14" />
               <div>
                 <p className="text-sm font-semibold text-slate-950">MeetingFlow AI</p>
                 <p className="text-xs text-slate-500">Execution workspace</p>
