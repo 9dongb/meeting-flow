@@ -9,7 +9,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { AiWorkingState } from "@/components/ui/ai-working-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { EmptyState, Feedback } from "@/components/ui/feedback";
+import { Feedback } from "@/components/ui/feedback";
 import { Input, Textarea } from "@/components/ui/input";
 import { api } from "@/lib/api";
 
@@ -137,7 +137,7 @@ export default function NewMeetingPage() {
           </button>
         </section>
       ) : (
-        <Card className={mode === "manual" ? "mx-auto max-w-4xl" : "mx-auto max-w-xl"}>
+        <Card className="mx-auto max-w-4xl">
           <CardHeader>
             <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
               <div>
@@ -198,8 +198,12 @@ export default function NewMeetingPage() {
                     <div className="mb-3 rounded-md border border-indigo-100 bg-indigo-50 p-3 text-[#5e6ad2]">
                       <FileText className="h-6 w-6" />
                     </div>
-                    <p className="text-sm font-medium">회의록 파일 업로드</p>
-                    <p className="mt-1 text-xs text-slate-500">txt, docx 파일을 지원합니다.</p>
+                    <p className="max-w-full break-words text-sm font-medium">
+                      {selectedFileName || "회의록 파일 업로드"}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {selectedFileName ? "파일 내용이 준비되었습니다." : "txt, docx 파일을 지원합니다."}
+                    </p>
                     <Input
                       className="mt-5"
                       type="file"
@@ -209,10 +213,6 @@ export default function NewMeetingPage() {
                   </div>
                 </label>
               )}
-
-              {mode === "upload" && selectedFileName ? (
-                <EmptyState title={selectedFileName} description="파일 내용이 준비되었습니다." />
-              ) : null}
 
               {error ? <Feedback variant="error">{error}</Feedback> : null}
               {success ? <Feedback variant="success">{success}</Feedback> : null}
