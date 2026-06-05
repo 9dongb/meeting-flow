@@ -5,7 +5,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { Participant } from "@/types";
 
-export function ParticipantsPopover({ participants }: { participants: Participant[] }) {
+type PopoverParticipant = Participant & {
+  source_text?: string | null;
+};
+
+export function ParticipantsPopover({ participants }: { participants: PopoverParticipant[] }) {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState({ left: 0, top: 0 });
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -79,7 +83,14 @@ export function ParticipantsPopover({ participants }: { participants: Participan
             <ul className="max-h-64 space-y-2 overflow-y-auto pr-1">
               {participants.map((participant, index) => (
                 <li key={`${participant.name}-${participant.email ?? index}`} className="rounded-md bg-slate-50 px-3 py-2">
-                  <p className="text-sm font-medium text-slate-900">{participant.name}</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="min-w-0 truncate text-sm font-medium text-slate-900">{participant.name}</p>
+                    {isAutoAddedParticipant(participant) ? (
+                      <span className="shrink-0 rounded bg-indigo-50 px-1.5 py-0.5 text-[11px] font-medium text-[#5e6ad2]">
+                        자동 추가
+                      </span>
+                    ) : null}
+                  </div>
                   {participant.email ? <p className="mt-0.5 truncate text-xs text-slate-500">{participant.email}</p> : null}
                 </li>
               ))}
@@ -129,4 +140,8 @@ function formatParticipantSummary(participants: Participant[]) {
   if (participants.length === 0) return "참석자 없음";
   if (participants.length === 1) return `참석자 ${participants[0].name}`;
   return `참석자 ${participants[0].name} 외 ${participants.length - 1}명`;
+}
+
+function isAutoAddedParticipant(participant: PopoverParticipant) {
+  return Boolean(participant.source_text && participant.source_text !== "사용자 입력");
 }

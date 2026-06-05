@@ -14,7 +14,7 @@ import { EmptyState, Feedback, LoadingState } from "@/components/ui/feedback";
 import { Input, Textarea } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { analysisFromMeeting, analysisToEditPayload, buildMailtoHref } from "@/lib/meeting-analysis";
-import { formatDate, todayIsoDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import type {
   ActionPriority,
   ActionStatus,
@@ -73,10 +73,25 @@ export default function MeetingAnalysisPage() {
 
   const result = useMemo(() => {
     const baseResult = storedAnalysis ?? (meeting ? analysisFromMeeting(meeting) : null);
-    return baseResult;
+    if (!baseResult || !meeting) return baseResult;
+    return {
+      ...baseResult,
+      meeting_title: baseResult.meeting_title || meeting.title,
+      meeting_date: baseResult.meeting_date ?? meeting.meeting_date,
+      participants:
+        baseResult.participants.length > 0
+          ? baseResult.participants
+          : meeting.participants.map((participant) => ({
+              name: participant.name,
+              email: participant.email,
+              role: null,
+              source_text: "사용자 입력",
+              confidence: 1
+            }))
+    };
   }, [meeting, storedAnalysis]);
   const displayTitle = result?.meeting_title || meeting?.title || "분석 결과";
-  const displayDate = result?.meeting_date ?? todayIsoDate();
+  const displayDate = result?.meeting_date ?? meeting?.meeting_date ?? null;
 
   async function generateEmailDraft() {
     if (!meetingId) return;

@@ -1,5 +1,3 @@
-from datetime import date
-
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -12,7 +10,7 @@ from app.models.participant import Participant
 from app.models.team_membership import TeamMembership
 from app.models.unresolved_issue import UnresolvedIssue
 from app.models.user import User
-from app.schemas.analysis import MeetingAnalysisResult
+from app.schemas.analysis import MeetingAnalysisResult, ParticipantAnalysis
 from app.services.ai.base import MeetingAnalyzer
 from app.services.ai.groq_analyzer import AIConfigurationError, AIProviderError, GroqMeetingAnalyzer
 from app.services.ai.mock_analyzer import MockMeetingAnalyzer
@@ -65,10 +63,12 @@ def analyze_and_persist_meeting(
 
     result = normalize_analysis_result(result)
     enrich_participant_emails(db, meeting, result)
+    merge_meeting_metadata_into_result(meeting, result)
 
     if result.meeting_title:
         meeting.title = result.meeting_title
-    meeting.meeting_date = result.meeting_date
+    if result.meeting_date is not None:
+        meeting.meeting_date = result.meeting_date
     sync_meeting_participants_from_analysis(meeting, result)
 
     meeting.summary = result.summary if result.is_analyzable else None
@@ -162,8 +162,6 @@ def should_use_mock_fallback(settings, exc: AIProviderError) -> bool:
 
 
 def normalize_analysis_result(result: MeetingAnalysisResult) -> MeetingAnalysisResult:
-    if result.meeting_date is None:
-        result.meeting_date = date.today()
     if not result.is_analyzable:
         result.summary = ""
         result.topics = []
@@ -172,6 +170,46 @@ def normalize_analysis_result(result: MeetingAnalysisResult) -> MeetingAnalysisR
         result.unresolved_issues = []
         result.participants = []
     return result
+
+
+def merge_meeting_metadata_into_result(meeting: Meeting, result: MeetingAnalysisResult) -> None:
+    result.meeting_title = result.meeting_title or meeting.title
+    result.meeting_date = result.meeting_date or meeting.meeting_date
+
+    extracted_participants = result.participants
+    result.participants = []
+    existing_names: set[str] = set()
+    extracted_by_name = {
+        normalize_person_name(clean_person_name(participant.name)): participant
+        for participant in extracted_participants
+    }
+
+    for participant in meeting.participants:
+        name = clean_person_name(participant.name)
+        normalized = normalize_person_name(name)
+        if not normalized or normalized in existing_names:
+            continue
+        extracted = extracted_by_name.get(normalized)
+        result.participants.append(
+            ParticipantAnalysis(
+                name=name,
+                email=participant.email or (extracted.email if extracted else None),
+                role=extracted.role if extracted else None,
+                source_text="사용자 입력",
+                confidence=1,
+            )
+        )
+        existing_names.add(normalized)
+
+    for participant in extracted_participants:
+        name = clean_person_name(participant.name)
+        normalized = normalize_person_name(name)
+        if not normalized or normalized in existing_names:
+            continue
+        participant.name = name
+        participant.source_text = participant.source_text or "원문에서 감지"
+        result.participants.append(participant)
+        existing_names.add(normalized)
 
 
 def enrich_participant_emails(db: Session, meeting: Meeting, result: MeetingAnalysisResult) -> MeetingAnalysisResult:
@@ -205,6 +243,37 @@ def unique_team_member_email_by_name(members: list[User]) -> dict[str, str]:
 
 def normalize_person_name(value: str) -> str:
     return "".join(value.casefold().split())
+
+
+PERSON_TITLE_SUFFIXES = (
+    "사원",
+    "주임",
+    "대리",
+    "과장",
+    "차장",
+    "부장",
+    "팀장",
+    "실장",
+    "본부장",
+    "이사",
+    "상무",
+    "전무",
+    "부사장",
+    "사장",
+    "대표",
+    "매니저",
+    "선임",
+    "책임",
+    "수석",
+    "연구원",
+)
+
+
+def clean_person_name(value: str) -> str:
+    tokens = value.strip().split()
+    while len(tokens) > 1 and tokens[-1] in PERSON_TITLE_SUFFIXES:
+        tokens.pop()
+    return " ".join(tokens).strip()
 
 
 def sync_meeting_participants_from_analysis(meeting: Meeting, result: MeetingAnalysisResult) -> None:

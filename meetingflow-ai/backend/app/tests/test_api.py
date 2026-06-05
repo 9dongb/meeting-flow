@@ -558,7 +558,7 @@ def test_mock_fallback_only_for_missing_configuration() -> None:
     )
 
 
-def test_analysis_result_uses_today_when_llm_returns_no_date() -> None:
+def test_analysis_result_keeps_missing_date_as_none() -> None:
     result = MeetingAnalysisResult(
         is_analyzable=True,
         meeting_title="주간 회의",
@@ -570,7 +570,101 @@ def test_analysis_result_uses_today_when_llm_returns_no_date() -> None:
 
     normalized = ai_service.normalize_analysis_result(result)
 
-    assert normalized.meeting_date is not None
+    assert normalized.meeting_date is None
+
+
+def test_analysis_preserves_user_entered_metadata_when_llm_omits_it(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class MetadataOmittingAnalyzer:
+        def analyze(self, meeting: Meeting, rag_context: RagAnalysisContext | None = None):
+            return MeetingAnalysisResult(
+                is_analyzable=True,
+                meeting_title=None,
+                meeting_date=None,
+                participants=[],
+                summary="제품 출시 일정을 논의했다.",
+                follow_up_email=FollowUpEmailAnalysis(subject="후속 공유", body="회의 정리", recipients=[]),
+            )
+
+    monkeypatch.setattr(ai_service, "get_meeting_analyzer", lambda: MetadataOmittingAnalyzer())
+
+    register(client)
+    meeting_id = create_meeting(
+        client,
+        title="직접 입력 회의",
+        participants=[{"name": "민지", "email": "minji@example.com"}],
+    )
+
+    analysis_response = client.post(f"/meetings/{meeting_id}/analyze")
+    assert analysis_response.status_code == 200
+    analysis = analysis_response.json()
+    assert analysis["meeting_title"] == "직접 입력 회의"
+    assert analysis["meeting_date"] == "2026-05-24"
+    assert analysis["participants"] == [
+        {
+            "name": "민지",
+            "email": "minji@example.com",
+            "role": None,
+            "source_text": "사용자 입력",
+            "confidence": 1.0,
+        }
+    ]
+
+    meeting_response = client.get(f"/meetings/{meeting_id}")
+    assert meeting_response.json()["title"] == "직접 입력 회의"
+    assert meeting_response.json()["meeting_date"] == "2026-05-24"
+
+
+def test_analysis_appends_auto_detected_participants_with_clean_names(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class AdditionalParticipantAnalyzer:
+        def analyze(self, meeting: Meeting, rag_context: RagAnalysisContext | None = None):
+            return MeetingAnalysisResult(
+                is_analyzable=True,
+                meeting_title="직접 입력 회의",
+                meeting_date=None,
+                participants=[
+                    ParticipantAnalysis(
+                        name="민지 과장",
+                        email="minji@example.com",
+                        source_text="민지 과장: 일정 확인했습니다.",
+                        confidence=0.9,
+                    ),
+                    ParticipantAnalysis(
+                        name="Alex 대리",
+                        source_text="Alex 대리: 배포 일정을 공유하겠습니다.",
+                        confidence=0.86,
+                    ),
+                ],
+                summary="배포 일정을 논의했다.",
+                follow_up_email=FollowUpEmailAnalysis(subject="후속 공유", body="회의 정리", recipients=[]),
+            )
+
+    monkeypatch.setattr(ai_service, "get_meeting_analyzer", lambda: AdditionalParticipantAnalyzer())
+
+    register(client)
+    meeting_id = create_meeting(
+        client,
+        title="직접 입력 회의",
+        participants=[{"name": "민지"}],
+    )
+
+    analysis_response = client.post(f"/meetings/{meeting_id}/analyze")
+    assert analysis_response.status_code == 200
+    participants = analysis_response.json()["participants"]
+    assert participants[0] == {
+        "name": "민지",
+        "email": "minji@example.com",
+        "role": None,
+        "source_text": "사용자 입력",
+        "confidence": 1.0,
+    }
+    assert participants[1]["name"] == "Alex"
+    assert participants[1]["source_text"] == "Alex 대리: 배포 일정을 공유하겠습니다."
 
 
 def test_unanalyzable_result_does_not_keep_forced_items() -> None:
@@ -587,7 +681,7 @@ def test_unanalyzable_result_does_not_keep_forced_items() -> None:
 
     normalized = ai_service.normalize_analysis_result(result)
 
-    assert normalized.meeting_date is not None
+    assert normalized.meeting_date is None
     assert normalized.summary == ""
     assert normalized.participants == []
     assert normalized.topics == []

@@ -12,6 +12,7 @@ def meeting_analysis_system_prompt() -> str:
 원문에서 추출할 수 없는 값은 null 또는 빈 배열로 반환하세요.
 회의 날짜가 문서에 명시되어 있거나 문맥상 명확하게 추론될 때만 meeting_date에 ISO 날짜(YYYY-MM-DD)를 반환하세요. 날짜 근거가 없으면 null을 반환하세요.
 참석자는 원문에 이름, 화자, 이메일, 역할 등 명확한 단서가 있을 때만 participants에 포함하세요. 참석자를 알 수 없으면 빈 배열을 반환하세요.
+참석자 name에는 직급/직책(사원, 대리, 과장, 차장, 부장, 팀장, 이사 등)을 제외한 순수 이름만 반환하세요.
 회의록으로 보기 어렵거나 입력/맥락이 부족해 요약을 포함한 핵심 항목 추출을 신뢰할 수 없으면 is_analyzable을 false로 반환하세요.
 is_analyzable이 false인 경우 analysis_failure_reason을 작성하고 summary는 빈 문자열, decisions/action_items/topics/participants/unresolved_issues는 빈 배열로 반환하세요.
 단순히 결정사항이나 액션 아이템이 없다는 이유만으로 is_analyzable을 false로 만들지 마세요.
@@ -95,9 +96,13 @@ def meeting_analysis_user_prompt(
 사용자가 입력한 참석자: {participants}
 
 중요 규칙:
-- meeting_title, meeting_date, participants는 회의록 원문과 문맥에서 추출 가능한 값만 반환하세요.
-- 사용자가 입력한 값만 있고 회의록 원문에 근거가 없다면 해당 분석 필드는 null 또는 빈 배열로 반환하세요.
-- meeting_date가 회의록 원문에 없으면 null을 반환하세요. 오늘 날짜를 직접 만들지 마세요.
+- 사용자가 입력한 회의 제목, 회의 날짜, 참석자는 신뢰 가능한 회의 메타데이터입니다.
+- 회의록 원문에서 더 구체적이거나 충돌하는 제목/날짜/참석자를 찾을 수 있으면 원문 값을 우선하세요.
+- 원문에서 제목/날짜/참석자를 찾을 수 없지만 사용자가 입력한 값이 있으면 그 값을 meeting_title, meeting_date, participants에 포함하세요.
+- meeting_date가 회의록 원문과 사용자 입력 어디에도 없으면 null을 반환하세요. 오늘 날짜를 직접 만들지 마세요.
+- 참석자는 수동 입력 참석자를 기본으로 유지하고, 회의록 원문에서 명확히 확인되는 추가 참석자만 덧붙이세요.
+- 참석자 name에는 "김민지 과장", "박준호 대리"처럼 직급/직책이 함께 보이더라도 "김민지", "박준호"처럼 순수 이름만 반환하세요.
+- 직급, 직책, 팀명, 조직명, 애매한 호칭만 있는 표현은 참석자로 추측하지 마세요.
 
 이전 회의록 정보:
 {rag_prompt}

@@ -46,7 +46,7 @@ export default function NewMeetingPage() {
       const meeting = await api.createMeeting({
         title: mode === "upload" ? selectedFileName.replace(/\.(txt|docx)$/i, "") || "업로드 회의록" : title,
         project_name: null,
-        meeting_date: mode === "upload" ? new Date().toISOString().slice(0, 10) : meetingDate || null,
+        meeting_date: mode === "upload" ? null : meetingDate || null,
         transcript,
         participants: mode === "upload" ? [] : parseParticipants(participants)
       });
