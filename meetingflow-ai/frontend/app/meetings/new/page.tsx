@@ -11,20 +11,23 @@ import { AiWorkingState } from "@/components/ui/ai-working-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Feedback } from "@/components/ui/feedback";
 import { Input, Textarea } from "@/components/ui/input";
+import sampleMeetings from "@/data/sample-meetings.json";
 import { api } from "@/lib/api";
 
 type InputMode = "manual" | "upload";
-const DEFAULT_TRANSCRIPT =
-  "2026년 5월 20일 A 프로젝트 회의에서 MVP 출시 일정, QA 진행 상황, 디자인 수정 범위를 논의했다. MVP 출시는 기존 일정대로 진행하되 QA 리스크가 큰 기능은 우선순위를 조정하기로 했다. 결제 기능은 1차 출시 범위에서 제외하고, 디자인 수정안은 이번 주 금요일까지 확정한다. 김비수는 Redis 캐시 레이어 설계와 FastAPI 백엔드 적용을 2026년 2월 2일까지 진행한다. 이미희는 예외 케이스를 포함한 QA 시나리오를 2026년 1월 31일까지 최종 수정한다. 홍몸동은 일정 변경 내용을 마케팅과 사업팀에 공유하고 조율한다. 결제 기능의 2차 출시 포함 여부, 고객사 검수 일정, QA 리소스 추가 배정 가능 여부는 추가 확인이 필요하다.";
+type SampleMeeting = (typeof sampleMeetings)[number];
+const DEFAULT_SAMPLE = sampleMeetings[0];
 
 export default function NewMeetingPage() {
   const router = useRouter();
   const [mode, setMode] = useState<InputMode | null>(null);
-  const [title, setTitle] = useState("제품 주간 싱크");
-  const [meetingDate, setMeetingDate] = useState(new Date().toISOString().slice(0, 10));
-  const [participants, setParticipants] = useState("민지 <minji@example.com>, 준호, Alex");
-  const [transcript, setTranscript] = useState(DEFAULT_TRANSCRIPT);
+  const [title, setTitle] = useState(DEFAULT_SAMPLE.title);
+  const [meetingDate, setMeetingDate] = useState(DEFAULT_SAMPLE.meetingDate);
+  const [participants, setParticipants] = useState(DEFAULT_SAMPLE.participants);
+  const [transcript, setTranscript] = useState(DEFAULT_SAMPLE.transcript);
+  const [selectedSampleId, setSelectedSampleId] = useState(DEFAULT_SAMPLE.id);
   const [selectedFileName, setSelectedFileName] = useState("");
+  const [showUploadPreview, setShowUploadPreview] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fileLoading, setFileLoading] = useState(false);
   const [error, setError] = useState("");
@@ -69,10 +72,13 @@ export default function NewMeetingPage() {
     setError("");
     setSuccess("");
     setSelectedFileName(file.name);
+    setSelectedSampleId("");
+    setShowUploadPreview(false);
 
     try {
       const text = await readMeetingFile(file);
       setTranscript(text.trim());
+      setShowUploadPreview(true);
       setSuccess("파일 내용을 불러왔습니다. AI 분석을 시작하세요.");
     } catch (err) {
       setTranscript("");
@@ -89,10 +95,45 @@ export default function NewMeetingPage() {
     setSelectedFileName("");
     if (nextMode === "upload") {
       setTranscript("");
+      setSelectedSampleId("");
+      setShowUploadPreview(false);
     }
     if (nextMode === "manual" && !transcript.trim()) {
-      setTranscript(DEFAULT_TRANSCRIPT);
+      applySampleMeeting(DEFAULT_SAMPLE.id, "manual");
     }
+  }
+
+  function applySampleMeeting(sampleId: string, targetMode = mode) {
+    const sample = sampleMeetings.find((item) => item.id === sampleId);
+    if (!sample) return;
+
+    setSelectedSampleId(sample.id);
+    setError("");
+    setSuccess("");
+    setTranscript(sample.transcript);
+
+    if (targetMode === "manual") {
+      setTitle(sample.title);
+      setMeetingDate(sample.meetingDate);
+      setParticipants(sample.participants);
+      setSelectedFileName("");
+      return;
+    }
+
+    if (targetMode === "upload") {
+      setSelectedFileName(sample.fileName);
+      setShowUploadPreview(true);
+      setSuccess("예시 파일 내용을 불러왔습니다. AI 분석을 시작하세요.");
+    }
+  }
+
+  function clearUploadSelection() {
+    setSelectedSampleId("");
+    setSelectedFileName("");
+    setTranscript("");
+    setShowUploadPreview(false);
+    setError("");
+    setSuccess("");
   }
 
   return (
@@ -164,6 +205,18 @@ export default function NewMeetingPage() {
           </CardHeader>
           <CardContent>
             <form className="space-y-4" onSubmit={onSubmit}>
+              <SampleMeetingSelect
+                mode={mode}
+                selectedSampleId={selectedSampleId}
+                onChange={(sampleId) => {
+                  if (!sampleId) {
+                    clearUploadSelection();
+                    return;
+                  }
+                  applySampleMeeting(sampleId);
+                }}
+              />
+
               {mode === "manual" ? (
                 <>
                   <div className="grid gap-4 sm:grid-cols-2">
@@ -193,25 +246,43 @@ export default function NewMeetingPage() {
                   </label>
                 </>
               ) : (
-                <label className="block rounded-md border border-dashed border-border bg-white p-5 shadow-sm">
-                  <div className="flex flex-col items-center text-center">
-                    <div className="mb-3 rounded-md border border-indigo-100 bg-indigo-50 p-3 text-[#5e6ad2]">
-                      <FileText className="h-6 w-6" />
+                <div className="space-y-3">
+                  <label className="block rounded-md border border-dashed border-border bg-white p-5 shadow-sm">
+                    <div className="flex flex-col items-center text-center">
+                      <div className="mb-3 rounded-md border border-indigo-100 bg-indigo-50 p-3 text-[#5e6ad2]">
+                        <FileText className="h-6 w-6" />
+                      </div>
+                      <p className="max-w-full break-words text-sm font-medium">
+                        {selectedFileName || "회의록 파일 업로드"}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {selectedFileName ? "파일 내용이 준비되었습니다." : "txt, docx 파일을 지원합니다."}
+                      </p>
+                      <Input
+                        className="mt-5"
+                        type="file"
+                        accept=".txt,.docx,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        onChange={onFileChange}
+                      />
                     </div>
-                    <p className="max-w-full break-words text-sm font-medium">
-                      {selectedFileName || "회의록 파일 업로드"}
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {selectedFileName ? "파일 내용이 준비되었습니다." : "txt, docx 파일을 지원합니다."}
-                    </p>
-                    <Input
-                      className="mt-5"
-                      type="file"
-                      accept=".txt,.docx,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                      onChange={onFileChange}
-                    />
-                  </div>
-                </label>
+                  </label>
+
+                  {transcript.trim() ? (
+                    <div className="rounded-md border border-border bg-slate-50 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-medium text-slate-900">추출된 내용</p>
+                        <Button type="button" variant="secondary" onClick={() => setShowUploadPreview((open) => !open)}>
+                          {showUploadPreview ? "접기" : "보기"}
+                        </Button>
+                      </div>
+                      {showUploadPreview ? (
+                        <p className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap rounded-md bg-white p-3 text-sm leading-6 text-slate-700">
+                          {transcript}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
               )}
 
               {error ? <Feedback variant="error">{error}</Feedback> : null}
@@ -234,6 +305,34 @@ export default function NewMeetingPage() {
         </Card>
       )}
     </AppShell>
+  );
+}
+
+function SampleMeetingSelect({
+  mode,
+  selectedSampleId,
+  onChange
+}: {
+  mode: InputMode;
+  selectedSampleId: string;
+  onChange: (sampleId: string) => void;
+}) {
+  return (
+    <label className="block space-y-2 text-sm font-medium">
+      <span>예시 회의록</span>
+      <select
+        className="h-10 w-full rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-[#5e6ad2] focus:shadow-[0_0_0_3px_rgba(94,106,210,0.16)]"
+        value={selectedSampleId}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        {mode === "upload" ? <option value="">직접 파일 업로드</option> : null}
+        {sampleMeetings.map((sample: SampleMeeting) => (
+          <option key={sample.id} value={sample.id}>
+            {sample.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
