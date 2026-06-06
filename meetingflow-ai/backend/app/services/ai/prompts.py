@@ -1,7 +1,10 @@
-from datetime import date
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
 from app.models.meeting import Meeting
 from app.services.rag.schemas import RagAnalysisContext
+
+SERVICE_TIME_ZONE = ZoneInfo("Asia/Seoul")
 
 
 def meeting_analysis_system_prompt() -> str:
@@ -15,8 +18,8 @@ def meeting_analysis_system_prompt() -> str:
 사용자 입력 메타데이터와 회의록 원문에서 추출할 수 없는 값은 null 또는 빈 배열로 반환하세요.
 
 사용자 입력 메타데이터에 제공된 회의 제목, 회의 날짜, 참석자는 신뢰 가능한 입력값으로 간주합니다.
-회의 날짜가 문서에 명시되어 있거나 문맥상 명확하게 추론될 때만 meeting_date에 ISO 날짜(YYYY-MM-DD)를 반환하세요. 
-날짜 근거가 없으면 null을 반환하세요.
+회의 날짜가 문서에 명시되어 있거나 문맥상 명확하게 추론될 때 meeting_date에 ISO 날짜(YYYY-MM-DD)를 반환하세요.
+회의 날짜 근거가 없으면 사용자 프롬프트에 제공된 기본 회의 날짜를 meeting_date로 반환하세요.
 
 참석자는 다음 규칙에 따라 participants에 포함하세요.
 1. 사용자 입력 참석자는 기본 참석자로 간주하여 participants에 포함하세요.
@@ -111,22 +114,31 @@ def meeting_analysis_user_prompt(
         for participant in meeting.participants
     ]
     meeting_date = meeting.meeting_date.isoformat() if isinstance(meeting.meeting_date, date) else None
+    analysis_date = datetime.now(SERVICE_TIME_ZONE).date().isoformat()
+    due_date_reference = meeting_date or analysis_date
     rag_prompt = rag_context.to_prompt_context() if rag_context else "No previous RAG context is available."
     return f"""
 이 회의록을 분석하세요.
 
-사용자가 입력한 회의 제목: {meeting.title}
-사용자가 입력한 회의 날짜: {meeting_date or "null"}
-사용자가 입력한 참석자: {participants}
+현재 저장된 회의 제목: {meeting.title}
+현재 저장된 회의 날짜: {meeting_date or "null"}
+분석 실행 날짜(KST): {analysis_date}
+회의 날짜 기본값: {meeting_date or analysis_date}
+액션 아이템 상대 날짜 해석 기준일: {due_date_reference}
+현재 저장된 참석자: {participants}
 
 중요 규칙:
-- 사용자 입력 회의 제목, 회의 날짜, 참석자는 신뢰 가능한 회의 메타데이터입니다.
+- 현재 저장된 회의 제목, 회의 날짜, 참석자는 신뢰 가능한 회의 메타데이터입니다.
+- 현재 저장된 회의 날짜가 null이면 회의록 원문에서 회의 날짜를 자동 추출하세요.
+- 현재 저장된 회의 날짜가 null이고 회의록 원문에서도 회의 날짜를 추출할 수 없으면 회의 날짜 기본값을 meeting_date로 반환하세요.
 - 회의 제목과 회의 날짜는 회의록 원문에서 더 구체적이거나 명확하게 충돌하는 값이 있으면 원문 값을 우선하세요.
-- 참석자는 원문 값으로 대체하지 말고, 사용자 입력 참석자를 기본값으로 유지한 뒤 회의록 원문에서 명확히 확인되는 추가 참석자만 덧붙이세요.
+- 참석자는 원문 값으로 대체하지 말고, 현재 저장된 참석자를 기본값으로 유지한 뒤 회의록 원문에서 명확히 확인되는 추가 참석자만 덧붙이세요.
 - 액션 아이템 담당자로 원문에 명확히 등장한 사람은 현재 회의에서 후속 업무를 받은 사람으로 보고 participants에도 포함하세요.
 - 동일 인물은 중복 출력하지 말고 병합하세요.
 - 동일 인물 판단은 이메일을 우선하고, 이메일이 없으면 직급/직책을 제거한 이름을 기준으로 하세요.
-- meeting_date가 회의록 원문과 사용자 입력 어디에도 없으면 null을 반환하세요. 오늘 날짜를 직접 만들지 마세요.
+- 액션 아이템의 "오늘", "내일", "다음주 수요일", "이번 주 금요일" 같은 상대 마감일은 액션 아이템 상대 날짜 해석 기준일을 기준으로 ISO 날짜(YYYY-MM-DD)로 변환하세요.
+- "다음주 수요일"은 기준일이 속한 주의 다음 주 수요일로 해석하세요.
+- 액션 아이템에 마감일 표현이 없으면 due_date는 null을 반환하세요.
 - 참석자 name에는 "김민지 과장", "박준호 대리"처럼 직급/직책이 함께 보이더라도 "김민지", "박준호"처럼 순수 이름만 반환하세요.
 - 직급, 직책, 팀명, 조직명, 애매한 호칭만 있는 표현은 참석자로 추측하지 마세요.
 - 이전 회의록 정보에 등장하는 사람을 현재 회의 참석자로 자동 포함하지 마세요.

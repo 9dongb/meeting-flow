@@ -1,3 +1,4 @@
+from datetime import date
 from types import SimpleNamespace
 
 import pytest
@@ -615,6 +616,57 @@ def test_analysis_preserves_user_entered_metadata_when_llm_omits_it(
     meeting_response = client.get(f"/meetings/{meeting_id}")
     assert meeting_response.json()["title"] == "직접 입력 회의"
     assert meeting_response.json()["meeting_date"] == "2026-05-24"
+
+
+def test_analysis_defaults_missing_meeting_date_to_today(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class DateOmittingAnalyzer:
+        def analyze(self, meeting: Meeting, rag_context: RagAnalysisContext | None = None):
+            return MeetingAnalysisResult(
+                is_analyzable=True,
+                meeting_title="자동 추출 회의",
+                meeting_date=None,
+                participants=[],
+                summary="회의 날짜 없이 액션 아이템을 논의했다.",
+                action_items=[
+                    ActionItemAnalysis(
+                        assignee="민지",
+                        description="마감일 없는 작업을 정리한다.",
+                        due_date=None,
+                        confidence=0.9,
+                    )
+                ],
+                follow_up_email=FollowUpEmailAnalysis(subject="후속 공유", body="회의 정리", recipients=[]),
+            )
+
+    monkeypatch.setattr(ai_service, "get_meeting_analyzer", lambda: DateOmittingAnalyzer())
+    monkeypatch.setattr(ai_service, "current_service_date", lambda: date(2026, 6, 6))
+
+    register(client)
+    create_response = client.post(
+        "/meetings",
+        json={
+            "title": "자동 추출 회의",
+            "project_name": "MeetingFlow AI",
+            "transcript": "민지: 마감일 없는 작업을 정리하겠습니다.",
+            "participants": [{"name": "민지"}],
+        },
+    )
+    assert create_response.status_code == 201
+    assert create_response.json()["meeting_date"] is None
+
+    meeting_id = create_response.json()["id"]
+    analysis_response = client.post(f"/meetings/{meeting_id}/analyze")
+    assert analysis_response.status_code == 200
+    analysis = analysis_response.json()
+    assert analysis["meeting_date"] == "2026-06-06"
+    assert analysis["action_items"][0]["due_date"] is None
+
+    meeting_response = client.get(f"/meetings/{meeting_id}")
+    assert meeting_response.json()["meeting_date"] == "2026-06-06"
+    assert meeting_response.json()["action_items"][0]["due_date"] is None
 
 
 def test_analysis_appends_auto_detected_participants_with_clean_names(

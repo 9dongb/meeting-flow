@@ -1,3 +1,6 @@
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -16,6 +19,8 @@ from app.services.ai.groq_analyzer import AIConfigurationError, AIProviderError,
 from app.services.ai.mock_analyzer import MockMeetingAnalyzer
 from app.services.ai.openai_analyzer import OpenAIMeetingAnalyzer
 from app.services.rag.service import get_rag_service
+
+SERVICE_TIME_ZONE = ZoneInfo("Asia/Seoul")
 
 
 class MeetingAnalysisUnavailableError(Exception):
@@ -174,7 +179,7 @@ def normalize_analysis_result(result: MeetingAnalysisResult) -> MeetingAnalysisR
 
 def merge_meeting_metadata_into_result(meeting: Meeting, result: MeetingAnalysisResult) -> None:
     result.meeting_title = result.meeting_title or meeting.title
-    result.meeting_date = result.meeting_date or meeting.meeting_date
+    result.meeting_date = result.meeting_date or meeting.meeting_date or current_service_date()
 
     extracted_participants = result.participants
     result.participants = []
@@ -318,3 +323,7 @@ def sync_meeting_participants_from_analysis(meeting: Meeting, result: MeetingAna
             Participant(name=participant.name, email=participant.email, source_text=participant.source_text)
         )
         existing_by_name[normalized] = meeting.participants[-1]
+
+
+def current_service_date() -> date:
+    return datetime.now(SERVICE_TIME_ZONE).date()
