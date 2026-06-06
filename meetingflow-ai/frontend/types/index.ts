@@ -54,6 +54,7 @@ export interface Participant {
   id?: number;
   name: string;
   email?: string | null;
+  source_text?: string | null;
 }
 
 export interface Decision {
@@ -122,7 +123,7 @@ export interface MeetingCreatePayload {
   project_name?: string | null;
   meeting_date?: string | null;
   transcript: string;
-  participants: Array<{ name: string; email?: string | null }>;
+  participants: Array<{ name: string; email?: string | null; source_text?: string | null }>;
 }
 
 export interface MeetingUpdatePayload {
@@ -130,14 +131,14 @@ export interface MeetingUpdatePayload {
   project_name?: string | null;
   meeting_date?: string | null;
   transcript?: string;
-  participants?: Array<{ name: string; email?: string | null }>;
+  participants?: Array<{ name: string; email?: string | null; source_text?: string | null }>;
 }
 
 export interface MeetingAnalysisUpdatePayload {
   title: string;
   meeting_date?: string | null;
   summary: string;
-  participants: Array<{ name: string; email?: string | null }>;
+  participants: Array<{ name: string; email?: string | null; source_text?: string | null }>;
   decisions: Array<{
     content: string;
     reason?: string | null;

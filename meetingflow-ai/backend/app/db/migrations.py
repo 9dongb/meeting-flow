@@ -64,6 +64,11 @@ def run_lightweight_migrations(engine: Engine) -> None:
         if "team_id" not in meeting_columns:
             connection.execute(text("ALTER TABLE meetings ADD COLUMN team_id INTEGER"))
 
+        if "participants" in table_names:
+            participant_columns = {column["name"] for column in inspector.get_columns("participants")}
+            if "source_text" not in participant_columns:
+                connection.execute(text("ALTER TABLE participants ADD COLUMN source_text TEXT"))
+
         if "user_google_accounts" not in table_names or "action_item_calendar_links" not in table_names:
             return
         google_account_columns = {column["name"] for column in inspector.get_columns("user_google_accounts")}

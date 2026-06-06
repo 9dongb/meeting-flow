@@ -44,7 +44,7 @@ def create_meeting(db: Session, user_id: int, team_id: int, meeting_in: MeetingC
         transcript=meeting_in.transcript,
     )
     meeting.participants = [
-        Participant(name=participant.name, email=participant.email)
+        Participant(name=participant.name, email=participant.email, source_text=participant.source_text or "사용자 입력")
         for participant in meeting_in.participants
         if participant.name.strip()
     ]
@@ -66,7 +66,7 @@ def update_meeting(db: Session, meeting: Meeting, meeting_in: MeetingUpdate) -> 
 
     if meeting_in.participants is not None:
         meeting.participants = [
-            Participant(name=participant.name, email=participant.email)
+            Participant(name=participant.name, email=participant.email, source_text=participant.source_text or "사용자 입력")
             for participant in meeting_in.participants
             if participant.name.strip()
         ]
@@ -82,7 +82,7 @@ def update_meeting_analysis(db: Session, meeting: Meeting, analysis_in: MeetingA
     meeting.meeting_date = analysis_in.meeting_date
     meeting.summary = analysis_in.summary
     meeting.participants = [
-        Participant(name=participant.name, email=participant.email)
+        Participant(name=participant.name, email=participant.email, source_text=participant.source_text or "사용자 입력")
         for participant in analysis_in.participants
         if participant.name.strip()
     ]

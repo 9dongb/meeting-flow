@@ -11,7 +11,7 @@ export function analysisFromMeeting(meeting: Meeting): MeetingAnalysisResult {
       name: participant.name,
       email: participant.email,
       role: null,
-      source_text: null,
+      source_text: participant.source_text ?? null,
       confidence: 1
     })),
     summary: meeting.summary || "아직 저장된 요약이 없습니다.",
@@ -55,7 +55,8 @@ export function analysisToEditPayload(result: MeetingAnalysisResult, meeting: Me
     summary: result.summary,
     participants: result.participants.map((participant) => ({
       name: participant.name,
-      email: participant.email ?? null
+      email: participant.email ?? null,
+      source_text: participant.source_text ?? null
     })),
     decisions: result.decisions.map((decision) => ({
       content: decision.content,

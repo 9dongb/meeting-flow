@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.models.meeting import Meeting
-from app.schemas.analysis import FollowUpEmailAnalysis, MeetingAnalysisResult, ParticipantAnalysis
+from app.schemas.analysis import ActionItemAnalysis, FollowUpEmailAnalysis, MeetingAnalysisResult, ParticipantAnalysis
 from app.services.ai import service as ai_service
 from app.services.ai.groq_analyzer import AIConfigurationError, AIProviderError
 from app.services.rag.schemas import RagAnalysisContext
@@ -665,6 +665,51 @@ def test_analysis_appends_auto_detected_participants_with_clean_names(
     }
     assert participants[1]["name"] == "Alex"
     assert participants[1]["source_text"] == "Alex 대리: 배포 일정을 공유하겠습니다."
+
+
+def test_analysis_appends_action_item_assignees_to_participants(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class AssigneeOnlyAnalyzer:
+        def analyze(self, meeting: Meeting, rag_context: RagAnalysisContext | None = None):
+            return MeetingAnalysisResult(
+                is_analyzable=True,
+                meeting_title="직접 입력 회의",
+                meeting_date=None,
+                participants=[],
+                summary="배포 준비를 논의했다.",
+                action_items=[
+                    ActionItemAnalysis(
+                        assignee="Alex 대리",
+                        description="배포 일정을 공유한다.",
+                        due_date=None,
+                        confidence=0.84,
+                        source_text="Alex 대리: 배포 일정을 공유하겠습니다.",
+                    )
+                ],
+                follow_up_email=FollowUpEmailAnalysis(subject="후속 공유", body="회의 정리", recipients=[]),
+            )
+
+    monkeypatch.setattr(ai_service, "get_meeting_analyzer", lambda: AssigneeOnlyAnalyzer())
+
+    register(client)
+    meeting_id = create_meeting(
+        client,
+        title="직접 입력 회의",
+        participants=[{"name": "민지"}],
+    )
+
+    analysis_response = client.post(f"/meetings/{meeting_id}/analyze")
+    assert analysis_response.status_code == 200
+    participants = analysis_response.json()["participants"]
+    assert [participant["name"] for participant in participants] == ["민지", "Alex"]
+    assert participants[1]["source_text"] == "Alex 대리: 배포 일정을 공유하겠습니다."
+
+    meeting_response = client.get(f"/meetings/{meeting_id}")
+    persisted_participants = meeting_response.json()["participants"]
+    assert [participant["name"] for participant in persisted_participants] == ["민지", "Alex"]
+    assert persisted_participants[1]["source_text"] == "Alex 대리: 배포 일정을 공유하겠습니다."
 
 
 def test_unanalyzable_result_does_not_keep_forced_items() -> None:

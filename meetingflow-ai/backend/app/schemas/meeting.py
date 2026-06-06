@@ -8,6 +8,7 @@ from app.models.enums import ActionPriority, ActionStatus
 class ParticipantCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     email: str | None = None
+    source_text: str | None = None
 
     @field_validator("name")
     @classmethod

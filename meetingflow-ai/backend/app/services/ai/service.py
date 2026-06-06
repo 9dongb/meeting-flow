@@ -62,8 +62,8 @@ def analyze_and_persist_meeting(
             raise MeetingAnalysisUnavailableError(str(exc)) from exc
 
     result = normalize_analysis_result(result)
-    enrich_participant_emails(db, meeting, result)
     merge_meeting_metadata_into_result(meeting, result)
+    enrich_participant_emails(db, meeting, result)
 
     if result.meeting_title:
         meeting.title = result.meeting_title
@@ -211,6 +211,23 @@ def merge_meeting_metadata_into_result(meeting: Meeting, result: MeetingAnalysis
         result.participants.append(participant)
         existing_names.add(normalized)
 
+    for item in result.action_items:
+        for assignee in split_assignee_names(item.assignee):
+            name = clean_person_name(assignee)
+            normalized = normalize_person_name(name)
+            if not normalized or normalized in existing_names:
+                continue
+            result.participants.append(
+                ParticipantAnalysis(
+                    name=name,
+                    email=None,
+                    role=None,
+                    source_text=item.source_text or "액션 아이템 담당자로 자동 추가",
+                    confidence=item.confidence,
+                )
+            )
+            existing_names.add(normalized)
+
 
 def enrich_participant_emails(db: Session, meeting: Meeting, result: MeetingAnalysisResult) -> MeetingAnalysisResult:
     if not meeting.team_id or not result.participants:
@@ -276,6 +293,12 @@ def clean_person_name(value: str) -> str:
     return " ".join(tokens).strip()
 
 
+def split_assignee_names(value: str | None) -> list[str]:
+    if not value:
+        return []
+    return [name.strip() for name in value.replace("/", ",").replace("·", ",").split(",") if name.strip()]
+
+
 def sync_meeting_participants_from_analysis(meeting: Meeting, result: MeetingAnalysisResult) -> None:
     if not result.participants:
         return
@@ -288,6 +311,10 @@ def sync_meeting_participants_from_analysis(meeting: Meeting, result: MeetingAna
         if existing:
             if not existing.email and participant.email:
                 existing.email = participant.email
+            if not existing.source_text and participant.source_text:
+                existing.source_text = participant.source_text
             continue
-        meeting.participants.append(Participant(name=participant.name, email=participant.email))
+        meeting.participants.append(
+            Participant(name=participant.name, email=participant.email, source_text=participant.source_text)
+        )
         existing_by_name[normalized] = meeting.participants[-1]
