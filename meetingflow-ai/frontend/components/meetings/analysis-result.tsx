@@ -112,7 +112,7 @@ export function AnalysisResult({
                 <div>
                   <p className="text-sm font-medium">{item.description}</p>
                   <p className="mt-2 text-xs text-slate-500">
-                    담당: {item.assignee || "미정"} · 마감: {item.due_date || "미정"} · 신뢰도 {confidenceLabel(item.confidence)}
+                    담당: {item.assignee || "미정"} · 마감: {item.due_date || "미정"}
                   </p>
                 </div>
                 <PriorityBadge priority={item.priority} />

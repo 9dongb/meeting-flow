@@ -82,12 +82,12 @@ export default function MeetingAnalysisPage() {
         baseResult.participants.length > 0
           ? baseResult.participants
           : meeting.participants.map((participant) => ({
-              name: participant.name,
-              email: participant.email,
-              role: null,
-              source_text: "사용자 입력",
-              confidence: 1
-            }))
+            name: participant.name,
+            email: participant.email,
+            role: null,
+            source_text: "사용자 입력",
+            confidence: 1
+          }))
     };
   }, [meeting, storedAnalysis]);
   const displayTitle = result?.meeting_title || meeting?.title || "분석 결과";
@@ -104,9 +104,9 @@ export default function MeetingAnalysisPage() {
       setMeeting((current) =>
         current
           ? {
-              ...current,
-              follow_up_email_drafts: [...(current.follow_up_email_drafts ?? []), draft]
-            }
+            ...current,
+            follow_up_email_drafts: [...(current.follow_up_email_drafts ?? []), draft]
+          }
           : current
       );
       setMessage("후속 이메일 초안을 작성하고 메일 앱을 열었습니다.");
@@ -282,18 +282,18 @@ function AnalysisActionsMenu({
           <button
             type="button"
             className="flex w-full items-center gap-2 rounded px-2 py-2 text-left hover:bg-slate-50"
-            onClick={() => run(onEdit)}
-          >
-            <Pencil className="h-4 w-4" />
-            수정
-          </button>
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 rounded px-2 py-2 text-left hover:bg-slate-50"
             onClick={() => run(onShowTranscript)}
           >
             <Eye className="h-4 w-4" />
             원문 보기
+          </button>
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 rounded px-2 py-2 text-left hover:bg-slate-50"
+            onClick={() => run(onEdit)}
+          >
+            <Pencil className="h-4 w-4" />
+            수정
           </button>
           <button
             type="button"

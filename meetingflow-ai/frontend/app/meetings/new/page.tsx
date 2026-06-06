@@ -16,16 +16,15 @@ import { api } from "@/lib/api";
 
 type InputMode = "manual" | "upload";
 type SampleMeeting = (typeof sampleMeetings)[number];
-const DEFAULT_SAMPLE = sampleMeetings[0];
 
 export default function NewMeetingPage() {
   const router = useRouter();
   const [mode, setMode] = useState<InputMode | null>(null);
-  const [title, setTitle] = useState(DEFAULT_SAMPLE.title);
-  const [meetingDate, setMeetingDate] = useState(DEFAULT_SAMPLE.meetingDate);
-  const [participants, setParticipants] = useState(DEFAULT_SAMPLE.participants);
-  const [transcript, setTranscript] = useState(DEFAULT_SAMPLE.transcript);
-  const [selectedSampleId, setSelectedSampleId] = useState(DEFAULT_SAMPLE.id);
+  const [title, setTitle] = useState("");
+  const [meetingDate, setMeetingDate] = useState("");
+  const [participants, setParticipants] = useState("");
+  const [transcript, setTranscript] = useState("");
+  const [selectedSampleId, setSelectedSampleId] = useState("");
   const [selectedFileName, setSelectedFileName] = useState("");
   const [showUploadPreview, setShowUploadPreview] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -98,9 +97,6 @@ export default function NewMeetingPage() {
       setSelectedSampleId("");
       setShowUploadPreview(false);
     }
-    if (nextMode === "manual" && !transcript.trim()) {
-      applySampleMeeting(DEFAULT_SAMPLE.id, "manual");
-    }
   }
 
   function applySampleMeeting(sampleId: string, targetMode = mode) {
@@ -134,6 +130,23 @@ export default function NewMeetingPage() {
     setShowUploadPreview(false);
     setError("");
     setSuccess("");
+  }
+
+  function clearSampleSelection() {
+    setSelectedSampleId("");
+    setTranscript("");
+    setError("");
+    setSuccess("");
+
+    if (mode === "manual") {
+      setTitle("");
+      setMeetingDate("");
+      setParticipants("");
+      setSelectedFileName("");
+      return;
+    }
+
+    clearUploadSelection();
   }
 
   return (
@@ -210,7 +223,7 @@ export default function NewMeetingPage() {
                 selectedSampleId={selectedSampleId}
                 onChange={(sampleId) => {
                   if (!sampleId) {
-                    clearUploadSelection();
+                    clearSampleSelection();
                     return;
                   }
                   applySampleMeeting(sampleId);
@@ -319,13 +332,13 @@ function SampleMeetingSelect({
 }) {
   return (
     <label className="block space-y-2 text-sm font-medium">
-      <span>예시 회의록</span>
+      <span>회의록 샘플</span>
       <select
         className="h-10 w-full rounded-md border border-border bg-white px-3 text-sm outline-none transition focus:border-[#5e6ad2] focus:shadow-[0_0_0_3px_rgba(94,106,210,0.16)]"
         value={selectedSampleId}
         onChange={(event) => onChange(event.target.value)}
       >
-        {mode === "upload" ? <option value="">직접 파일 업로드</option> : null}
+        <option value="">{mode === "upload" ? "직접 파일 업로드" : "직접 입력"}</option>
         {sampleMeetings.map((sample: SampleMeeting) => (
           <option key={sample.id} value={sample.id}>
             {sample.label}
