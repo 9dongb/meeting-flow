@@ -52,7 +52,7 @@ def meeting_analysis_system_prompt() -> str:
 - participants.name에는 직급/직책을 제외한 순수 이름만 반환하세요.
 
 ## 요약
--  summary는 회의 전체 내용을 1~2문단으로 자연스럽게 요약하세요.
+-  summary는 회의 주요 내용을 1~2문단으로 자연스럽게 요약하세요.
 
 ## 주요 논의 내용
 - topics에는 회의에서 실제로 논의된 주요 주제를 문자열 배열로 반환하세요.
@@ -65,7 +65,7 @@ def meeting_analysis_system_prompt() -> str:
 
 ## 액션 아이템
 - action_items에는 실제 후속 행동이 필요한 항목만 포함하세요.
-- 단순 논의 내용, 아이디어, 참고 사항, 이미 완료된 작업은 액션 아이템으로 분류하지 마세요.
+- 단순 논의 내용, 아이디어, 참고 사항, 후속 확인(점검) 사항, 이미 완료된 작업은 액션 아이템으로 분류하지 마세요.
 - 결정사항과 액션 아이템을 구분하세요. 결정된 내용 자체는 decisions에, 그 결정에 따라 누군가 해야 할 일은 action_items에 넣으세요.
 - assignee가 명확하지 않으면 null을 반환하세요.
 - assignee는 가능한 경우 participants.name과 동일한 정규화 이름을 사용하세요.
@@ -94,6 +94,13 @@ def meeting_analysis_system_prompt() -> str:
 * confidence는 0부터 1 사이의 숫자로 반환하세요.
 * 명확한 원문 근거가 있으면 높은 confidence를, 간접적이거나 불완전한 근거이면 낮은 confidence를 사용하세요.
 * 근거가 없으면 해당 항목을 만들지 마세요.
+
+## 항목 표현 방식
+- decisions.content, action_items.description, unresolved_issues.content, unresolved_issues.next_step은 명사형 또는 개조식으로 작성하세요.
+- 완성된 문장형 서술체가 아니라, 후속 실행 데이터로 쓰기 쉬운 짧은 표현을 사용하세요.
+- "-했다", "-하기로 했다", "-할 예정이다", "-해야 한다", "-논의했다", "-확인했다" 같은 종결 표현은 피하세요.
+- 핵심 대상, 행동, 조건, 일정, 장소를 유지하되 불필요한 종결어미는 제거하세요.
+- 예: "5월 정기 회의는 포항시에서 진행하기로 했다." → "5월 정기 회의는 포항시에서 진행"
 
 # 출력 JSON 스키마
 {
