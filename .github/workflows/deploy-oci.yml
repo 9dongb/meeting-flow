@@ -44,7 +44,7 @@ jobs:
 
             DEPLOY_PATH="${DEPLOY_PATH:-/home/ubuntu/meeting-flow}"
             DEPLOY_BRANCH="${DEPLOY_BRANCH:-main}"
-            APP_DIR="$DEPLOY_PATH/meetingflow-ai"
+            APP_DIR="$DEPLOY_PATH"
 
             echo "Deploy started: $(date)"
             echo "Deploy path: $DEPLOY_PATH"
@@ -118,5 +118,5 @@ jobs:
         if: failure()
         run: |
           echo "Deployment failed. SSH into the Oracle server and inspect:"
-          echo "  cd \${DEPLOY_PATH:-/home/ubuntu/meeting-flow}/meetingflow-ai"
+          echo "  cd \${DEPLOY_PATH:-/home/ubuntu/meeting-flow}"
           echo "  docker compose --env-file .env.docker logs --tail=120"

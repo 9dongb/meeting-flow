@@ -7,31 +7,30 @@ AI 회의록 분석을 통해 요약, 결정사항, 액션 아이템, 후속 이
 ## 구조
 
 ```text
-meetingflow-ai/
-  backend/
-    app/
-      api/
-      core/
-      crud/
-      db/
-      models/
-      schemas/
-      services/
-        ai/
-        integrations/
-        rag/
-      tests/
-    alembic/
-    scripts/
-    requirements.txt
-    .env.example
-  frontend/
-    app/
-    components/
-    lib/
-    types/
-    package.json
-    .env.example
+backend/
+  app/
+    api/
+    core/
+    crud/
+    db/
+    models/
+    schemas/
+    services/
+      ai/
+      integrations/
+      rag/
+    tests/
+  alembic/
+  scripts/
+  requirements.txt
+  .env.example
+frontend/
+  app/
+  components/
+  lib/
+  types/
+  package.json
+  .env.example
 ```
 
 ## 빠른 실행
@@ -39,7 +38,7 @@ meetingflow-ai/
 백엔드:
 
 ```bash
-cd meetingflow-ai/backend
+cd backend
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -52,7 +51,7 @@ uvicorn app.main:app --reload
 프론트엔드:
 
 ```bash
-cd meetingflow-ai/frontend
+cd frontend
 npm install
 cp .env.example .env.local
 npm run dev
@@ -63,7 +62,7 @@ npm run dev
 데모 데이터를 넣고 싶다면 백엔드 가상환경이 활성화된 상태에서 다음 명령을 실행합니다.
 
 ```bash
-cd meetingflow-ai/backend
+cd backend
 python scripts/seed_demo.py
 ```
 
@@ -74,7 +73,6 @@ python scripts/seed_demo.py
 Docker Compose는 백엔드 FastAPI, 프론트엔드 Next.js, SQLite 데이터 볼륨을 함께 실행합니다.
 
 ```bash
-cd meetingflow-ai
 cp .env.docker.example .env.docker
 # .env.docker의 JWT_SECRET_KEY, origin, OAuth/API key 값을 배포 환경에 맞게 수정
 chmod 600 .env.docker
@@ -121,7 +119,6 @@ ssh -p 3223 ubuntu@<서버IP>
 mkdir -p /home/ubuntu/meeting-flow
 cd /home/ubuntu/meeting-flow
 git clone https://github.com/<owner>/<repo>.git .
-cd meetingflow-ai
 cp .env.docker.example .env.docker
 chmod 600 .env.docker
 # .env.docker에 실제 production origin, JWT_SECRET_KEY, OPENAI_API_KEY 등을 입력
@@ -142,7 +139,7 @@ Actions workflow에는 API key를 넣지 않습니다. 실제 `OPENAI_API_KEY`, 
 서버에 적용:
 
 ```bash
-cd /home/ubuntu/meeting-flow/meetingflow-ai
+cd /home/ubuntu/meeting-flow
 sudo cp nginx-meetingflow.conf /etc/nginx/sites-available/meetingflow-ai
 sudo vi /etc/nginx/sites-available/meetingflow-ai
 # __FRONTEND_DOMAIN__, __API_DOMAIN__ 값을 실제 도메인으로 변경
@@ -172,7 +169,7 @@ AUTH_COOKIE_SECURE=true
 도메인이 하나뿐이라면 `nginx-meetingflow-single-domain.conf`를 사용하세요. 예를 들어 `02-demo.aiweb2026.site` 하나로 운영할 때는 `/`는 프론트엔드로, `/auth`, `/meetings`, `/integrations` 같은 API 경로는 백엔드로 라우팅합니다.
 
 ```bash
-cd /home/ubuntu/meeting-flow/meetingflow-ai
+cd /home/ubuntu/meeting-flow
 sudo cp nginx-meetingflow-single-domain.conf /etc/nginx/sites-available/meetingflow-ai
 sudo sed -i 's/__DOMAIN__/02-demo.aiweb2026.site/g' /etc/nginx/sites-available/meetingflow-ai
 sudo ln -sf /etc/nginx/sites-available/meetingflow-ai /etc/nginx/sites-enabled/meetingflow-ai
@@ -198,14 +195,14 @@ NOTION_REDIRECT_URI=https://02-demo.aiweb2026.site/integrations/notion/callback
 백엔드:
 
 ```bash
-cd meetingflow-ai/backend
+cd backend
 pytest
 ```
 
 프론트엔드:
 
 ```bash
-cd meetingflow-ai/frontend
+cd frontend
 npm run lint
 npm run build
 ```
@@ -240,7 +237,7 @@ npm run build
 
 ## 환경변수
 
-백엔드 `meetingflow-ai/backend/.env`:
+백엔드 `backend/.env`:
 
 ```bash
 APP_NAME="MeetingFlow AI"
@@ -281,7 +278,7 @@ PINECONE_NAMESPACE=meetingflow-local
 RAG_ENABLED=false
 ```
 
-프론트엔드 `meetingflow-ai/frontend/.env.local`:
+프론트엔드 `frontend/.env.local`:
 
 ```bash
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
