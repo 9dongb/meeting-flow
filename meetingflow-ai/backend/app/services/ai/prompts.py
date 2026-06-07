@@ -46,10 +46,6 @@ source_text에는 원문 근거를 짧게 포함하세요.
 confidence는 0부터 1 사이 숫자로 반환하세요.
 마감일에는 ISO 날짜 형식(YYYY-MM-DD)을 사용하거나 null을 사용하세요.
 
-follow_up_email.recipients에는 participants 중 email이 명확한 참석자의 이메일만 포함하세요.
-이메일이 없는 참석자의 이메일은 추측하지 마세요.
-수신자가 없으면 빈 배열을 반환하세요.
-
 JSON은 정확히 다음 형태를 따라야 합니다:
 {
   "is_analyzable": boolean,
@@ -92,12 +88,7 @@ JSON은 정확히 다음 형태를 따라야 합니다:
       "next_step": string | null,
       "source_text": string | null
     }
-  ],
-  "follow_up_email": {
-    "subject": string,
-    "body": string,
-    "recipients": string[]
-  }
+  ]
 }
 """.strip()
 

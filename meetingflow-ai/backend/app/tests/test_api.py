@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.models.meeting import Meeting
-from app.schemas.analysis import ActionItemAnalysis, FollowUpEmailAnalysis, MeetingAnalysisResult, ParticipantAnalysis
+from app.schemas.analysis import ActionItemAnalysis, MeetingAnalysisResult, ParticipantAnalysis
 from app.services.ai import service as ai_service
 from app.services.ai.groq_analyzer import AIConfigurationError, AIProviderError
 from app.services.rag.schemas import RagAnalysisContext
@@ -497,7 +497,6 @@ def test_analysis_enriches_participant_email_from_team_members(
                     ParticipantAnalysis(name="준호", confidence=0.9),
                 ],
                 summary="팀 싱크에서 진행 상황을 공유했다.",
-                follow_up_email=FollowUpEmailAnalysis(subject="팀 싱크 정리", body="공유드립니다.", recipients=[]),
             )
 
     monkeypatch.setattr(ai_service, "get_meeting_analyzer", lambda: ParticipantOnlyAnalyzer())
@@ -566,7 +565,6 @@ def test_analysis_result_keeps_missing_date_as_none() -> None:
         meeting_date=None,
         participants=[],
         summary="제품 출시 일정을 논의했다.",
-        follow_up_email=FollowUpEmailAnalysis(subject="후속 공유", body="회의 정리", recipients=[]),
     )
 
     normalized = ai_service.normalize_analysis_result(result)
@@ -586,7 +584,6 @@ def test_analysis_preserves_user_entered_metadata_when_llm_omits_it(
                 meeting_date=None,
                 participants=[],
                 summary="제품 출시 일정을 논의했다.",
-                follow_up_email=FollowUpEmailAnalysis(subject="후속 공유", body="회의 정리", recipients=[]),
             )
 
     monkeypatch.setattr(ai_service, "get_meeting_analyzer", lambda: MetadataOmittingAnalyzer())
@@ -638,7 +635,6 @@ def test_analysis_defaults_missing_meeting_date_to_today(
                         confidence=0.9,
                     )
                 ],
-                follow_up_email=FollowUpEmailAnalysis(subject="후속 공유", body="회의 정리", recipients=[]),
             )
 
     monkeypatch.setattr(ai_service, "get_meeting_analyzer", lambda: DateOmittingAnalyzer())
@@ -693,7 +689,6 @@ def test_analysis_appends_auto_detected_participants_with_clean_names(
                     ),
                 ],
                 summary="배포 일정을 논의했다.",
-                follow_up_email=FollowUpEmailAnalysis(subject="후속 공유", body="회의 정리", recipients=[]),
             )
 
     monkeypatch.setattr(ai_service, "get_meeting_analyzer", lambda: AdditionalParticipantAnalyzer())
@@ -740,7 +735,6 @@ def test_analysis_appends_action_item_assignees_to_participants(
                         source_text="Alex 대리: 배포 일정을 공유하겠습니다.",
                     )
                 ],
-                follow_up_email=FollowUpEmailAnalysis(subject="후속 공유", body="회의 정리", recipients=[]),
             )
 
     monkeypatch.setattr(ai_service, "get_meeting_analyzer", lambda: AssigneeOnlyAnalyzer())
@@ -773,7 +767,6 @@ def test_unanalyzable_result_does_not_keep_forced_items() -> None:
         participants=[ParticipantAnalysis(name="민지", confidence=0.2)],
         summary="억지 요약",
         topics=["억지 주제"],
-        follow_up_email=FollowUpEmailAnalysis(subject="후속 공유", body="회의 정리", recipients=[]),
     )
 
     normalized = ai_service.normalize_analysis_result(result)

@@ -38,12 +38,7 @@ export function analysisFromMeeting(meeting: Meeting): MeetingAnalysisResult {
         owner: issue.owner,
         next_step: issue.next_step,
         source_text: issue.source_text
-      })) ?? [],
-    follow_up_email: {
-      subject: "[후속 공유] 회의 정리",
-      body: "",
-      recipients: []
-    }
+      })) ?? []
   };
 }
 

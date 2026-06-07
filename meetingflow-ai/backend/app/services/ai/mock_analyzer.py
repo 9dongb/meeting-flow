@@ -76,16 +76,6 @@ class MockMeetingAnalyzer:
                     source_text="이번 단계에서는 실제 외부 API 연동보다 교체 가능한 구조가 중요합니다.",
                 )
             ],
-            follow_up_email=FollowUpEmailAnalysis(
-                subject=f"[후속 공유] {meeting.title} 회의 정리 및 액션 아이템",
-                body=(
-                    "안녕하세요.\n\n"
-                    f"{meeting.title} 회의 요약과 액션 아이템 초안을 공유드립니다.\n"
-                    "각 담당자는 마감일과 우선순위를 검토한 뒤 필요한 수정 사항을 남겨주세요.\n\n"
-                    "감사합니다."
-                ),
-                recipients=[],
-            ),
         )
 
     def generate_follow_up_email(self, meeting: Meeting) -> FollowUpEmailAnalysis:

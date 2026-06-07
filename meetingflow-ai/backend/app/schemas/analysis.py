@@ -53,4 +53,3 @@ class MeetingAnalysisResult(BaseModel):
     decisions: list[DecisionAnalysis] = Field(default_factory=list)
     action_items: list[ActionItemAnalysis] = Field(default_factory=list)
     unresolved_issues: list[UnresolvedIssueAnalysis] = Field(default_factory=list)
-    follow_up_email: FollowUpEmailAnalysis

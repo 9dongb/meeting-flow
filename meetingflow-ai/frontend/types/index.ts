@@ -196,11 +196,6 @@ export interface MeetingAnalysisResult {
     next_step?: string | null;
     source_text?: string | null;
   }>;
-  follow_up_email: {
-    subject: string;
-    body: string;
-    recipients: string[];
-  };
 }
 
 export interface MockIntegrationResponse {
