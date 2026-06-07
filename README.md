@@ -1,6 +1,6 @@
 # MeetingFlow AI
 
-AI 회의록 분석을 통해 요약, 결정사항, 액션 아이템, 후속 이메일 초안까지 정리하는 웹 서비스 입니다.
+MeetingFlow AI는 회의록을 입력하면 AI가 요약, 주요 주제, 결정사항, 액션 아이템, 미해결 이슈를 구조화해 주는 팀용 회의 관리 웹 서비스입니다. 회의 후속 작업을 놓치지 않도록 액션 아이템 칸반, 후속 이메일 초안, Markdown 내보내기, Notion 초안 생성, Google Calendar 일정 동기화를 제공합니다.
 
 이 저장소는 FastAPI 백엔드와 Next.js 프론트엔드를 분리한 모노레포입니다. 현재는 이메일/비밀번호 및 Google 로그인, 팀 기반 회의 공유, LLM 기반 회의 분석, Google Calendar/Notion 연동을 포함합니다.
 
@@ -235,7 +235,6 @@ npm run build
 - `/meetings`: 회의 목록
 - `/meetings/new`: 직접 작성 또는 파일 업로드로 회의 분석 시작
 - `/meetings/{id}/analysis`: 분석 결과 조회/수정, 원문 보기, 삭제, 이메일/Notion 초안 생성
-- `/meetings/{id}/actions`: 회의별 액션 아이템 검토 테이블
 
 ## 환경변수
 
@@ -432,35 +431,22 @@ AI 분석 파이프라인은 분석 직전에 `RagService.build_analysis_context
 - 프로젝트 문서 기반 용어/약어 해석
 - 다음 회의 아젠다 자동 생성
 
-## 현재 구현 범위
+## 핵심 구현 범위
 
-실제 구현된 기능:
-
-- 이메일 회원가입/로그인 및 Google 로그인
-- bcrypt 비밀번호 해시 저장
-- httpOnly cookie 기반 JWT 인증
-- 팀 생성, 팀 초대 코드 참여, 팀 범위 접근 제어
+- 회의록 텍스트 분석 및 구조화
 - 회의 생성/조회/수정/삭제
-- OpenAI/Groq/Mock 분석기 선택
-- 분석 결과 저장 및 편집
+- 액션 아이템 기반 칸반 보드
 - 후속 이메일 초안 생성
-- 액션 아이템 조회/수정/삭제와 칸반 보드
-- txt/docx 파일에서 회의록 텍스트 추출
-- Markdown export
+- 팀 생성, 팀 초대 코드 참여, 팀 범위 접근 제어
 - Notion OAuth 연결과 회의록 초안 생성 흐름
 - Google Calendar OAuth 연결과 액션 아이템 동기화 흐름
+- 이메일 회원가입/로그인 및 Google 로그인 연동
+- bcrypt 비밀번호 해시 저장
+- httpOnly cookie 기반 JWT 인증
 - 로컬 SQLite lightweight migration
-- 핵심 API 테스트
 
-아직 제한적인 기능:
 
-- 음성 파일 업로드와 STT 처리
-- Gmail 실제 API 발송
-- RAG/Pinecone 실제 벡터 인덱싱 및 검색
-- Alembic migration 파일 기반 운영 마이그레이션
-- 브라우저 E2E 테스트
-
-## 알려진 제한사항
+## 제한사항
 
 - 로컬 MVP는 FastAPI startup에서 `create_all`과 SQLite용 lightweight migration을 실행합니다. 운영 전 Alembic migration을 작성해야 합니다.
 - provider API key가 없을 때만 로컬 Mock fallback이 동작합니다. provider 장애나 응답 스키마 오류는 `503`으로 처리될 수 있습니다.
@@ -469,13 +455,9 @@ AI 분석 파이프라인은 분석 직전에 `RagService.build_analysis_context
 - Notion 초안 생성은 OAuth와 page 생성 흐름 중심이며, 더 정교한 block 변환은 추가 구현이 필요합니다.
 - 프론트엔드 보호 라우트는 클라이언트에서 `/auth/me` 확인 후 redirect합니다. 민감 데이터 보호는 백엔드 권한 검증이 최종 방어선입니다.
 
-## 다음 구현 후보
+## 이후 구현 후보
 
-1. 음성 업로드 저장소와 STT provider abstraction 추가
-2. 긴 회의록용 chunk 분석 및 결과 merge 로직 추가
-3. Alembic 초기 migration 생성
-4. Pinecone 기반 embedding, indexing, search adapter 구현
-5. Gmail 실제 API connector 및 사용자 승인 UI 추가
-6. Notion block 변환 고도화
-7. 액션 아이템 필터, 담당자별 뷰, 마감 알림 강화
-8. 백엔드 통합 테스트와 프론트엔드 E2E 테스트 보강
+1. 음성 업로드 저장소와 STT provider 추가
+2. Alembic 초기 migration 생성
+3. Pinecone 기반 embedding, indexing, search adapter 구현
+4. 백엔드 통합 테스트와 프론트엔드 E2E 테스트 보강
