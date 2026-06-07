@@ -396,10 +396,16 @@ def test_follow_up_email_draft_recipients_only_include_participants_with_email(
 
 def test_notion_oauth_status_and_draft_creation(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     from app.api.routes import notion as notion_route
-    from app.services.integrations.notion import NotionDraftService
+    from app.services.integrations.notion import NotionDraftService, NotionIntegrationError
 
     register(client)
-    meeting_id = create_meeting(client)
+    meeting_id = create_meeting(
+        client,
+        participants=[
+            {"name": "민지", "email": "minji@example.com"},
+            {"name": "태오"},
+        ],
+    )
     client.post(f"/meetings/{meeting_id}/analyze")
 
     unconnected_response = client.post(f"/meetings/{meeting_id}/notion-draft")
@@ -440,6 +446,7 @@ def test_notion_oauth_status_and_draft_creation(client: TestClient, monkeypatch:
 
     created_workspace_pages = []
     draft_parent_page_ids = []
+    draft_children = []
 
     monkeypatch.setattr(
         NotionDraftService,
@@ -455,7 +462,8 @@ def test_notion_oauth_status_and_draft_creation(client: TestClient, monkeypatch:
     monkeypatch.setattr(
         NotionDraftService,
         "_create_page",
-        lambda self, access_token, title, markdown, *, parent_page_id: draft_parent_page_ids.append(parent_page_id)
+        lambda self, access_token, title, children, *, parent_page_id: draft_parent_page_ids.append(parent_page_id)
+        or draft_children.append(children)
         or {
             "id": f"page-{len(draft_parent_page_ids)}",
             "url": f"https://www.notion.so/page-{len(draft_parent_page_ids)}",
@@ -470,6 +478,27 @@ def test_notion_oauth_status_and_draft_creation(client: TestClient, monkeypatch:
     assert draft["log"]["payload_json"]["parent_page_id"] == "meetingflow-parent-1"
     assert created_workspace_pages == ["MeetingFlow"]
     assert draft_parent_page_ids == ["meetingflow-parent-1"]
+    block_types = [block["type"] for block in draft_children[0]]
+    assert "table" in block_types
+    assert "to_do" in block_types
+    assert "toggle" in block_types
+    assert "divider" in block_types
+    assert "callout" not in block_types
+    nested_block_types = [
+        child["type"]
+        for block in draft_children[0]
+        for child in block.get(block["type"], {}).get("children", [])
+    ]
+    assert "code" in nested_block_types
+    participant_heading_index = next(
+        index
+        for index, block in enumerate(draft_children[0])
+        if block["type"] == "heading_2"
+        and block["heading_2"]["rich_text"][0]["text"]["content"] == "참석자"
+    )
+    participant_block = draft_children[0][participant_heading_index + 1]
+    assert participant_block["type"] == "paragraph"
+    assert participant_block["paragraph"]["rich_text"][0]["text"]["content"] == "민지 (minji@example.com), 태오"
 
     draft_response = client.post(f"/meetings/{meeting_id}/notion-draft")
     assert draft_response.status_code == 200
@@ -479,6 +508,94 @@ def test_notion_oauth_status_and_draft_creation(client: TestClient, monkeypatch:
 
     status_response = client.get("/integrations/notion/status")
     assert status_response.json()["meetingflow_page_url"] == "https://www.notion.so/meetingflow-parent-1"
+
+    monkeypatch.setattr(
+        NotionDraftService,
+        "_retrieve_page",
+        lambda self, access_token, page_id: {
+            "id": page_id,
+            "url": "https://www.notion.so/archived-meetingflow-parent",
+            "archived": True,
+        },
+    )
+    monkeypatch.setattr(
+        NotionDraftService,
+        "_create_workspace_page",
+        lambda self, access_token, title: created_workspace_pages.append(title)
+        or {"id": "meetingflow-parent-2", "url": "https://www.notion.so/meetingflow-parent-2"},
+    )
+
+    draft_response = client.post(f"/meetings/{meeting_id}/notion-draft")
+    assert draft_response.status_code == 200
+    assert draft_parent_page_ids[-1] == "meetingflow-parent-2"
+    assert created_workspace_pages == ["MeetingFlow", "MeetingFlow"]
+
+    status_response = client.get("/integrations/notion/status")
+    assert status_response.json()["meetingflow_page_url"] == "https://www.notion.so/meetingflow-parent-2"
+
+    monkeypatch.setattr(
+        NotionDraftService,
+        "_retrieve_page",
+        lambda self, access_token, page_id: {"id": page_id, "url": "https://www.notion.so/meetingflow-parent-2"},
+    )
+    monkeypatch.setattr(
+        NotionDraftService,
+        "_create_workspace_page",
+        lambda self, access_token, title: created_workspace_pages.append(title)
+        or {"id": "meetingflow-parent-3", "url": "https://www.notion.so/meetingflow-parent-3"},
+    )
+    create_attempts = []
+
+    def create_page_with_stale_parent(self, access_token, title, children, *, parent_page_id):
+        create_attempts.append(parent_page_id)
+        if parent_page_id == "meetingflow-parent-2":
+            raise NotionIntegrationError(
+                'Notion page creation failed: {"message":"Can\'t edit block that is archived."}'
+            )
+        return {"id": "page-recovered", "url": "https://www.notion.so/page-recovered"}
+
+    monkeypatch.setattr(NotionDraftService, "_create_page", create_page_with_stale_parent)
+
+    draft_response = client.post(f"/meetings/{meeting_id}/notion-draft")
+    assert draft_response.status_code == 200
+    assert draft_response.json()["page_id"] == "page-recovered"
+    assert create_attempts == ["meetingflow-parent-2", "meetingflow-parent-3"]
+
+
+def test_notion_create_page_sends_initial_children_and_appends_overflow(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.services.integrations.notion import NOTION_CHILDREN_LIMIT, NotionDraftService
+
+    service = NotionDraftService()
+    created_payloads = []
+    appended_children = []
+    children = [
+        {
+            "object": "block",
+            "type": "paragraph",
+            "paragraph": {"rich_text": []},
+        }
+        for _ in range(NOTION_CHILDREN_LIMIT + 1)
+    ]
+
+    monkeypatch.setattr(
+        service,
+        "_create_page_payload",
+        lambda access_token, payload: created_payloads.append(payload)
+        or {"id": "page-1", "url": "https://www.notion.so/page-1"},
+    )
+    monkeypatch.setattr(
+        service,
+        "_append_block_children",
+        lambda access_token, block_id, overflow: appended_children.append((block_id, overflow)),
+    )
+
+    page = service._create_page("token", "회의록", children, parent_page_id="parent-1")
+
+    assert page["id"] == "page-1"
+    assert created_payloads[0]["children"] == children[:NOTION_CHILDREN_LIMIT]
+    assert appended_children == [("page-1", children[NOTION_CHILDREN_LIMIT:])]
 
 
 def test_users_cannot_access_each_others_data(client: TestClient) -> None:
