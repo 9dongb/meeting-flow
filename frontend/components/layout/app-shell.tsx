@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { AppLogo } from "@/components/layout/app-logo";
 import { api } from "@/lib/api";
 import { clearClientAuthState } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 import type { User } from "@/types";
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -166,11 +167,12 @@ function TopNavLink({
   return (
     <Link
       href={href}
-      className={`inline-flex h-9 shrink-0 items-center gap-2 rounded-md px-3 text-sm font-medium transition ${
+      className={cn(
+        "inline-flex h-9 shrink-0 items-center gap-2 rounded-md px-3 text-sm font-medium transition-[background-color,color,box-shadow,transform] duration-150 ease-out active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d9dbf7]",
         active
-          ? "bg-white text-slate-950 shadow-sm ring-1 ring-border"
+          ? "bg-white text-slate-950 shadow-[inset_0_0_0_1px_rgba(16,16,18,0.08)] active:bg-[#fbfbfc]"
           : "text-slate-600 hover:bg-[#f0f0f2] hover:text-slate-950"
-      }`}
+      )}
     >
       {children}
     </Link>
