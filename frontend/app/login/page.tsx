@@ -2,7 +2,7 @@
 
 import { ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { AppLogo } from "@/components/layout/app-logo";
@@ -19,6 +19,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState("password123");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const modeParam = new URLSearchParams(window.location.search).get("mode");
+
+    if (modeParam === "register" || modeParam === "login") {
+      setMode(modeParam);
+    }
+  }, []);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -51,7 +59,7 @@ export default function LoginPage() {
 
         <div className="mt-10 space-y-5">
           <a
-            className="inline-flex h-14 w-full items-center justify-center rounded-full border border-[#d9d9dc] bg-white px-5 text-base font-semibold text-slate-950 shadow-[0_1px_2px_rgba(16,16,18,0.04)] transition hover:border-[#c9c9ce] hover:bg-[#fbfbfc]"
+            className="inline-flex h-14 w-full items-center justify-center rounded-md border border-[#d9d9dc] bg-white px-5 text-base font-semibold text-slate-950 shadow-[0_1px_2px_rgba(16,16,18,0.04)] transition hover:border-[#c9c9ce] hover:bg-[#fbfbfc]"
             href={`${API_BASE_URL}/auth/google/login`}
           >
             Google 계정으로 계속하기
@@ -67,7 +75,7 @@ export default function LoginPage() {
             {mode === "register" ? (
               <Input
                 aria-label="이름"
-                className="h-14 rounded-full px-6 text-base placeholder:text-slate-400"
+                className="h-14 rounded-md px-6 text-base placeholder:text-slate-400"
                 placeholder="이름"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
@@ -76,7 +84,7 @@ export default function LoginPage() {
             ) : null}
             <Input
               aria-label="이메일 주소"
-              className="h-14 rounded-full px-6 text-base placeholder:text-slate-400"
+              className="h-14 rounded-md px-6 text-base placeholder:text-slate-400"
               type="email"
               placeholder="이메일 주소"
               value={email}
@@ -85,7 +93,7 @@ export default function LoginPage() {
             />
             <Input
               aria-label="비밀번호"
-              className="h-14 rounded-full px-6 text-base placeholder:text-slate-400"
+              className="h-14 rounded-md px-6 text-base placeholder:text-slate-400"
               type="password"
               minLength={8}
               placeholder="비밀번호"
@@ -94,7 +102,7 @@ export default function LoginPage() {
               required
             />
             {error ? <p className="rounded-md border border-red-200 bg-red-50/85 px-4 py-3 text-sm text-red-700">{error}</p> : null}
-            <Button className="h-14 w-full rounded-full bg-slate-950 text-base hover:bg-slate-800" disabled={loading}>
+            <Button className="h-14 w-full rounded-md bg-slate-950 text-base hover:bg-slate-800" disabled={loading}>
               {loading ? "처리 중" : mode === "login" ? "계속" : "계정 만들기"}
               <ArrowRight className="h-4 w-4" />
             </Button>

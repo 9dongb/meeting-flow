@@ -49,6 +49,8 @@ const actionItems = [
   { title: "릴리즈 노트 초안 검토", owner: "박서연", due: "D-5", status: "보통" }
 ];
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+
 export default function Home() {
   return (
     <main className="work-surface min-h-screen">
@@ -58,10 +60,10 @@ export default function Home() {
           <span className="text-sm font-semibold text-slate-950">MeetingFlow AI</span>
         </Link>
         <nav className="flex items-center gap-2">
-          <Link className="hidden rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-white hover:text-slate-950 sm:inline-flex" href="/login">
+          <Link className="hidden rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-white hover:text-slate-950 sm:inline-flex" href="/login?mode=login">
             로그인
           </Link>
-          <Link className="ai-button-primary inline-flex h-9 items-center justify-center gap-2 rounded-md px-3 text-sm font-semibold" href="/login">
+          <Link className="ai-button-primary inline-flex h-9 items-center justify-center gap-2 rounded-md px-3 text-sm font-semibold" href="/login?mode=register">
             시작하기
             <ArrowRight className="h-4 w-4" />
           </Link>
@@ -81,13 +83,13 @@ export default function Home() {
             회의록을 실행 가능한 후속 업무로 바꾸는 AI 워크스페이스입니다. 요약, 결정사항, 담당자, 마감일, 후속 메일 초안까지 한 흐름에서 정리합니다.
           </p>
           <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-            <Link className="ai-button-primary inline-flex h-11 items-center justify-center gap-2 rounded-md px-4 text-sm font-semibold" href="/login">
+            <Link className="ai-button-primary inline-flex h-11 items-center justify-center gap-2 rounded-md px-4 text-sm font-semibold" href="/login?mode=register">
               바로 시작하기
               <ArrowRight className="h-4 w-4" />
             </Link>
-            <Link className="inline-flex h-11 items-center justify-center rounded-md border border-border bg-white px-4 text-sm font-semibold text-slate-900 shadow-sm hover:bg-[#f7f7f8]" href="/login">
+            <a className="inline-flex h-11 items-center justify-center rounded-md border border-border bg-white px-4 text-sm font-semibold text-slate-900 shadow-sm hover:bg-[#f7f7f8]" href={`${API_BASE_URL}/auth/google/login`}>
               Google로 계속하기
-            </Link>
+            </a>
           </div>
           <dl className="mt-8 hidden gap-3 sm:grid sm:grid-cols-3">
             {proofPoints.map((item) => (
@@ -178,9 +180,9 @@ function ProductPreview() {
         <div className="p-4">
           <p className="text-sm font-semibold text-slate-950">후속 연동</p>
           <div className="mt-3 space-y-3">
-            <IntegrationRow icon={CalendarClock} label="Google Calendar" value="마감일 일정 생성" />
-            <IntegrationRow icon={NotebookTabs} label="Notion" value="팀 회의록 DB 저장" />
-            <IntegrationRow icon={Mail} label="Gmail" value="후속 메일 초안" />
+            <IntegrationRow icon={CalendarClock} label="Google Calendar" value="Action Item 연동" />
+            <IntegrationRow icon={NotebookTabs} label="Notion" value="요약 정리 초안 생성" />
+            <IntegrationRow icon={Mail} label="Gmail" value="후속 메일 초안 생성" />
           </div>
           <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
             <span className="font-semibold">가장 가까운 마감</span>
