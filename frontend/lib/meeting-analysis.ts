@@ -79,11 +79,23 @@ export function analysisToEditPayload(result: MeetingAnalysisResult, meeting: Me
 
 export function buildMailtoHref(draft: { subject: string; body: string; recipients?: string[] | null }) {
   const recipients = (draft.recipients ?? [])
-    .map((recipient) => recipient.trim())
-    .filter(Boolean)
+    .map(normalizeRecipientEmail)
+    .filter((recipient): recipient is string => Boolean(recipient))
     .map(encodeURIComponent)
     .join(",");
   const params = [`subject=${encodeURIComponent(draft.subject)}`, `body=${encodeURIComponent(draft.body)}`].join("&");
 
   return `mailto:${recipients}?${params}`;
+}
+
+function normalizeRecipientEmail(recipient: string): string | null {
+  const trimmed = recipient.trim();
+  const bracketMatch = trimmed.match(/<([^<>\s@]+@[^<>\s@]+)>$/);
+  const email = bracketMatch?.[1] ?? trimmed;
+  const parts = email.split("@");
+
+  if (parts.length !== 2 || !parts[0] || !parts[1] || /\s/.test(email)) {
+    return null;
+  }
+  return email;
 }

@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.models.meeting import Meeting
-from app.schemas.analysis import ActionItemAnalysis, MeetingAnalysisResult, ParticipantAnalysis
+from app.schemas.analysis import ActionItemAnalysis, FollowUpEmailAnalysis, MeetingAnalysisResult, ParticipantAnalysis
 from app.services.ai import service as ai_service
 from app.services.ai.groq_analyzer import AIConfigurationError, AIProviderError
 from app.services.rag.schemas import RagAnalysisContext
@@ -45,6 +45,22 @@ def create_meeting(
     )
     assert response.status_code == 201
     return int(response.json()["id"])
+
+
+class NoisyFollowUpEmailAnalyzer:
+    def generate_follow_up_email(self, meeting: Meeting) -> FollowUpEmailAnalysis:
+        return FollowUpEmailAnalysis(
+            subject=f"[후속 공유] {meeting.title}",
+            body="후속 이메일 본문입니다.",
+            recipients=[
+                "민지",
+                "minji@example.com",
+                " minji@example.com ",
+                "태오",
+                "taeo@example.com",
+                "outside@example.com",
+            ],
+        )
 
 
 def connect_google_calendar(
@@ -356,6 +372,26 @@ def test_create_get_analyze_and_update_action_item(client: TestClient) -> None:
     delete_response = client.delete(f"/meetings/{meeting_id}")
     assert delete_response.status_code == 204
     assert client.get(f"/meetings/{meeting_id}").status_code == 404
+
+
+def test_follow_up_email_draft_recipients_only_include_participants_with_email(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    register(client)
+    meeting_id = create_meeting(
+        client,
+        participants=[
+            {"name": "민지", "email": "minji@example.com"},
+            {"name": "태오"},
+        ],
+    )
+    monkeypatch.setattr(ai_service, "get_meeting_analyzer", lambda: NoisyFollowUpEmailAnalyzer())
+
+    draft_response = client.post(f"/meetings/{meeting_id}/follow-up-email-draft")
+
+    assert draft_response.status_code == 200
+    assert draft_response.json()["recipients"] == ["minji@example.com"]
 
 
 def test_notion_oauth_status_and_draft_creation(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:

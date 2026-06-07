@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from email.utils import parseaddr
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
@@ -149,13 +150,45 @@ def generate_and_persist_follow_up_email_draft(
     draft = FollowUpEmailDraft(
         subject=result.subject,
         body=result.body,
-        recipients=result.recipients,
+        recipients=sanitize_follow_up_recipients(meeting, result.recipients),
     )
     meeting.follow_up_email_drafts.append(draft)
     db.add(meeting)
     db.commit()
     db.refresh(draft)
     return draft
+
+
+def sanitize_follow_up_recipients(meeting: Meeting, recipients: list[str]) -> list[str]:
+    valid_participant_emails = {}
+    for participant in meeting.participants:
+        email = normalize_email_address(participant.email)
+        if email:
+            valid_participant_emails.setdefault(email.lower(), email)
+
+    sanitized = []
+    seen = set()
+    for recipient in recipients:
+        email = normalize_email_address(recipient)
+        if not email:
+            continue
+        key = email.lower()
+        if key in valid_participant_emails and key not in seen:
+            sanitized.append(valid_participant_emails[key])
+            seen.add(key)
+    return sanitized
+
+
+def normalize_email_address(value: str | None) -> str | None:
+    raw = (value or "").strip()
+    if not raw:
+        return None
+
+    email = parseaddr(raw)[1].strip() or raw
+    local_part, separator, domain = email.partition("@")
+    if not separator or not local_part or not domain or any(char.isspace() for char in email):
+        return None
+    return email
 
 
 def should_use_mock_fallback(settings, exc: AIProviderError) -> bool:
