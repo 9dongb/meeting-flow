@@ -501,7 +501,7 @@ function IntegrationsPanel({
               {calendarStatus?.permission_granted ? "Calendar 다시 연결" : "Calendar 권한 연결"}
             </Button>
             {calendarStatus?.permission_granted ? (
-              <Button className="w-full" variant="danger" disabled={updating} onClick={disconnectCalendar}>
+              <Button className="w-full" variant="dangerSoft" disabled={updating} onClick={disconnectCalendar}>
                 연결 해제
               </Button>
             ) : null}
@@ -545,7 +545,7 @@ function IntegrationsPanel({
               {notionStatus?.connected ? "Notion 다시 연결" : "Notion 연결"}
             </Button>
             {notionStatus?.connected ? (
-              <Button className="w-full" variant="danger" disabled={updating} onClick={disconnectNotion}>
+              <Button className="w-full" variant="dangerSoft" disabled={updating} onClick={disconnectNotion}>
                 연결 해제
               </Button>
             ) : null}

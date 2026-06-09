@@ -2,13 +2,14 @@ import type { ButtonHTMLAttributes } from "react";
 
 import { cn } from "@/lib/utils";
 
-type ButtonVariant = "default" | "secondary" | "ghost" | "danger";
+type ButtonVariant = "default" | "secondary" | "ghost" | "danger" | "dangerSoft";
 
 const variants: Record<ButtonVariant, string> = {
   default: "ai-button-primary",
   secondary: "border border-border bg-white text-slate-900 shadow-sm hover:bg-[#f7f7f8]",
   ghost: "text-slate-700 hover:bg-[#f0f0f2]",
-  danger: "bg-red-600 text-white shadow-sm hover:bg-red-700"
+  danger: "bg-red-600 text-white shadow-sm hover:bg-red-700",
+  dangerSoft: "border border-red-200 bg-red-50 text-red-700 shadow-sm hover:bg-red-100"
 };
 
 export function Button({
