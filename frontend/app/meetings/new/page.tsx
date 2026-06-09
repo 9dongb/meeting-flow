@@ -158,22 +158,6 @@ export default function NewMeetingPage() {
 
       {!mode ? (
         <section className="mx-auto grid max-w-4xl gap-4 md:grid-cols-2">
-          <button className="text-left" onClick={() => selectMode("manual")}>
-            <Card className="h-full transition hover:-translate-y-0.5 hover:border-slate-400">
-              <CardHeader>
-                <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-md border border-indigo-100 bg-indigo-50 text-[#5e6ad2]">
-                  <Keyboard className="h-5 w-5" />
-                </div>
-                <CardTitle>직접 작성</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm leading-6 text-slate-600">
-                  회의록 텍스트를 바로 붙여넣고 AI 분석을 시작합니다.
-                </p>
-              </CardContent>
-            </Card>
-          </button>
-
           <button className="text-left" onClick={() => selectMode("upload")}>
             <Card className="h-full transition hover:-translate-y-0.5 hover:border-slate-400">
               <CardHeader>
@@ -185,6 +169,22 @@ export default function NewMeetingPage() {
               <CardContent>
                 <p className="text-sm leading-6 text-slate-600">
                   `.txt` 또는 Word `.docx` 파일에서 회의록 텍스트를 추출합니다.
+                </p>
+              </CardContent>
+            </Card>
+          </button>
+
+          <button className="text-left" onClick={() => selectMode("manual")}>
+            <Card className="h-full transition hover:-translate-y-0.5 hover:border-slate-400">
+              <CardHeader>
+                <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-md border border-indigo-100 bg-indigo-50 text-[#5e6ad2]">
+                  <Keyboard className="h-5 w-5" />
+                </div>
+                <CardTitle>직접 작성</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm leading-6 text-slate-600">
+                  회의록 텍스트를 바로 붙여넣고 AI 분석을 시작합니다.
                 </p>
               </CardContent>
             </Card>
