@@ -64,7 +64,7 @@ export default function Home() {
             로그인
           </Link>
           <Link className="ai-button-primary inline-flex h-9 items-center justify-center gap-2 rounded-md px-3 text-sm font-semibold" href="/login?mode=register">
-            시작하기
+            회원가입
             <ArrowRight className="h-4 w-4" />
           </Link>
         </nav>
@@ -83,8 +83,8 @@ export default function Home() {
             회의록을 실행 가능한 후속 업무로 바꾸는 AI 워크스페이스입니다. 요약, 결정사항, 담당자, 마감일, 후속 메일 초안까지 한 흐름에서 정리합니다.
           </p>
           <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-            <Link className="ai-button-primary inline-flex h-11 items-center justify-center gap-2 rounded-md px-4 text-sm font-semibold" href="/login?mode=register">
-              바로 시작하기
+            <Link className="ai-button-primary inline-flex h-11 items-center justify-center gap-2 rounded-md px-4 text-sm font-semibold" href="/login">
+              시작하기
               <ArrowRight className="h-4 w-4" />
             </Link>
             <a className="inline-flex h-11 items-center justify-center rounded-md border border-border bg-white px-4 text-sm font-semibold text-slate-900 shadow-sm hover:bg-[#f7f7f8]" href={`${API_BASE_URL}/auth/google/login`}>
