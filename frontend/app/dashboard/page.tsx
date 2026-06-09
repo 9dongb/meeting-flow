@@ -236,6 +236,7 @@ export default function DashboardPage() {
             calendarStatus={calendarStatus}
             notionStatus={notionStatus}
             onCalendarStatusChange={setCalendarStatus}
+            onNotionStatusChange={setNotionStatus}
             onMessage={setMessage}
             onError={setError}
           />
@@ -388,50 +389,41 @@ function IntegrationsPanel({
   calendarStatus,
   notionStatus,
   onCalendarStatusChange,
+  onNotionStatusChange,
   onMessage,
   onError
 }: {
   calendarStatus: GoogleCalendarStatus | null;
   notionStatus: NotionStatus | null;
   onCalendarStatusChange: (status: GoogleCalendarStatus) => void;
+  onNotionStatusChange: (status: NotionStatus) => void;
   onMessage: (message: string) => void;
   onError: (message: string) => void;
 }) {
   const [updating, setUpdating] = useState(false);
 
-  async function toggleSync() {
-    if (!calendarStatus?.permission_granted) {
-      window.location.href = `${API_BASE_URL}/integrations/google-calendar/connect?return_to=${encodeURIComponent("/dashboard?calendar=connected")}`;
-      return;
-    }
-    setUpdating(true);
-    onMessage("");
-    onError("");
-    try {
-      const updated = await api.updateGoogleCalendarSettings({ sync_enabled: !calendarStatus.sync_enabled });
-      onCalendarStatusChange(updated);
-      onMessage(updated.sync_enabled ? "Google Calendar 동기화를 켰습니다." : "Google Calendar 동기화를 껐습니다.");
-    } catch (err) {
-      onError(err instanceof Error ? err.message : "Google Calendar 설정 변경에 실패했습니다.");
-    } finally {
-      setUpdating(false);
-    }
+  function connectCalendar() {
+    window.location.href = `${API_BASE_URL}/integrations/google-calendar/connect?return_to=${encodeURIComponent("/dashboard?calendar=connected")}`;
   }
 
-  async function syncNow() {
+  async function disconnectCalendar() {
     setUpdating(true);
     onMessage("");
     onError("");
     try {
-      const updated = await api.syncGoogleCalendarNow();
-      onCalendarStatusChange(updated);
-      if (updated.failed_count > 0) {
-        onError(`Calendar 동기화 실패 ${updated.failed_count}건이 있습니다. ${updated.last_error ?? ""}`.trim());
-      } else {
-        onMessage("Google Calendar 재동기화를 완료했습니다.");
-      }
+      await api.disconnectGoogleCalendar();
+      onCalendarStatusChange({
+        connected: false,
+        sync_enabled: false,
+        permission_granted: false,
+        calendar_id: "primary",
+        synced_count: 0,
+        failed_count: 0,
+        skipped_count: 0
+      });
+      onMessage("Google Calendar 연결을 해제했습니다.");
     } catch (err) {
-      onError(err instanceof Error ? err.message : "Google Calendar 재동기화에 실패했습니다.");
+      onError(err instanceof Error ? err.message : "Google Calendar 연결 해제에 실패했습니다.");
     } finally {
       setUpdating(false);
     }
@@ -439,6 +431,21 @@ function IntegrationsPanel({
 
   function connectNotion() {
     window.location.href = `${API_BASE_URL}/integrations/notion/connect?return_to=${encodeURIComponent("/dashboard?notion=connected")}`;
+  }
+
+  async function disconnectNotion() {
+    setUpdating(true);
+    onMessage("");
+    onError("");
+    try {
+      await api.disconnectNotion();
+      onNotionStatusChange({ connected: false });
+      onMessage("Notion 연결을 해제했습니다.");
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Notion 연결 해제에 실패했습니다.");
+    } finally {
+      setUpdating(false);
+    }
   }
 
   return (
@@ -459,7 +466,7 @@ function IntegrationsPanel({
               </div>
               <p className="mt-1 truncate text-xs text-slate-500">
                 {calendarStatus?.permission_granted
-                  ? `${calendarStatus.sync_enabled ? "동기화 ON" : "동기화 OFF"} · ${calendarStatus.email}`
+                  ? `연결됨 · ${calendarStatus.email}`
                   : "Calendar 이벤트 권한이 필요합니다."}
               </p>
             </div>
@@ -487,15 +494,15 @@ function IntegrationsPanel({
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
             <Button
               className={`w-full ${!calendarStatus?.permission_granted ? "sm:col-span-2 xl:col-span-1 2xl:col-span-2" : ""}`}
-              variant={calendarStatus?.sync_enabled ? "secondary" : "default"}
+              variant={calendarStatus?.permission_granted ? "secondary" : "default"}
               disabled={updating}
-              onClick={toggleSync}
+              onClick={connectCalendar}
             >
-              {calendarStatus?.permission_granted ? (calendarStatus.sync_enabled ? "동기화 끄기" : "동기화 켜기") : "Calendar 권한 연결"}
+              {calendarStatus?.permission_granted ? "Calendar 다시 연결" : "Calendar 권한 연결"}
             </Button>
-            {calendarStatus?.permission_granted && calendarStatus.sync_enabled ? (
-              <Button className="w-full" variant="secondary" disabled={updating} onClick={syncNow}>
-                지금 재동기화
+            {calendarStatus?.permission_granted ? (
+              <Button className="w-full" variant="danger" disabled={updating} onClick={disconnectCalendar}>
+                연결 해제
               </Button>
             ) : null}
           </div>
@@ -528,9 +535,21 @@ function IntegrationsPanel({
               ) : null}
             </div>
           </div>
-          <Button className="mt-3 w-full" variant={notionStatus?.connected ? "secondary" : "default"} onClick={connectNotion}>
-            {notionStatus?.connected ? "Notion 다시 연결" : "Notion 연결"}
-          </Button>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+            <Button
+              className={`w-full ${!notionStatus?.connected ? "sm:col-span-2 xl:col-span-1 2xl:col-span-2" : ""}`}
+              variant={notionStatus?.connected ? "secondary" : "default"}
+              disabled={updating}
+              onClick={connectNotion}
+            >
+              {notionStatus?.connected ? "Notion 다시 연결" : "Notion 연결"}
+            </Button>
+            {notionStatus?.connected ? (
+              <Button className="w-full" variant="danger" disabled={updating} onClick={disconnectNotion}>
+                연결 해제
+              </Button>
+            ) : null}
+          </div>
         </div>
       </CardContent>
     </Card>

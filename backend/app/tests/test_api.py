@@ -225,6 +225,73 @@ def test_google_login_preserves_calendar_connection_after_logout(
     assert status_after_login.json()["sync_enabled"] is True
 
 
+def test_disconnect_google_calendar_removes_saved_account_and_links(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.db.session import get_db
+    from app.models.action_item import ActionItem
+    from app.models.action_item_calendar_link import ActionItemCalendarLink
+    from app.models.google_account import UserGoogleAccount
+    from app.models.user import User
+
+    register(client)
+    meeting_id = create_meeting(client)
+    client.post(f"/meetings/{meeting_id}/analyze")
+    connect_google_calendar(client, monkeypatch)
+
+    status_response = client.get("/integrations/google-calendar/status")
+    assert status_response.status_code == 200
+    assert status_response.json()["permission_granted"] is True
+
+    override_get_db = client.app.dependency_overrides[get_db]
+    db_context = override_get_db()
+    db = next(db_context)
+    try:
+        user = db.query(User).filter_by(email="user@example.com").one()
+        item = db.query(ActionItem).filter_by(meeting_id=meeting_id).first()
+        assert item is not None
+        db.add(
+            ActionItemCalendarLink(
+                action_item_id=item.id,
+                user_id=user.id,
+                google_event_id="event-1",
+                calendar_id="primary",
+                sync_status="synced",
+            )
+        )
+        db.commit()
+    finally:
+        db_context.close()
+
+    disconnect_response = client.delete("/integrations/google-calendar")
+    assert disconnect_response.status_code == 204
+
+    status_response = client.get("/integrations/google-calendar/status")
+    assert status_response.status_code == 200
+    assert status_response.json() == {
+        "connected": False,
+        "sync_enabled": False,
+        "permission_granted": False,
+        "email": None,
+        "calendar_id": "primary",
+        "synced_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "last_error": None,
+    }
+    assert client.post("/integrations/google-calendar/sync").status_code == 404
+
+    db_context = override_get_db()
+    db = next(db_context)
+    try:
+        user = db.query(User).filter_by(email="user@example.com").one()
+        assert db.query(UserGoogleAccount).filter_by(user_id=user.id).one_or_none() is None
+        assert db.query(ActionItemCalendarLink).filter_by(user_id=user.id).count() == 0
+    finally:
+        db_context.close()
+
+
 def test_google_login_uses_existing_calendar_linked_user_when_emails_differ(
     client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
@@ -286,6 +353,8 @@ def test_protected_routes_require_authentication(client: TestClient) -> None:
     assert client.post("/meetings/1/notion-draft").status_code == 401
     assert client.get("/meetings/1/action-items").status_code == 401
     assert client.get("/integrations/notion/status").status_code == 401
+    assert client.delete("/integrations/notion").status_code == 401
+    assert client.delete("/integrations/google-calendar").status_code == 401
 
 
 def test_create_get_analyze_and_update_action_item(client: TestClient) -> None:
@@ -560,6 +629,51 @@ def test_notion_oauth_status_and_draft_creation(client: TestClient, monkeypatch:
     assert draft_response.status_code == 200
     assert draft_response.json()["page_id"] == "page-recovered"
     assert create_attempts == ["meetingflow-parent-2", "meetingflow-parent-3"]
+
+
+def test_disconnect_notion_removes_saved_account(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.api.routes import notion as notion_route
+
+    register(client)
+    meeting_id = create_meeting(client)
+
+    monkeypatch.setattr(
+        notion_route,
+        "exchange_code_for_notion_token",
+        lambda code, redirect_uri: {
+            "access_token": "notion-access-token",
+            "refresh_token": "notion-refresh-token",
+            "workspace_id": "workspace-1",
+            "workspace_name": "Product Workspace",
+            "bot_id": "bot-1",
+            "owner": {"user": {"person": {"email": "owner@example.com"}}},
+        },
+    )
+    client.cookies.set(notion_route.NOTION_STATE_COOKIE, "state-1")
+    callback_response = client.get(
+        "/integrations/notion/callback?code=code-1&state=state-1",
+        follow_redirects=False,
+    )
+    assert callback_response.status_code == 302
+
+    status_response = client.get("/integrations/notion/status")
+    assert status_response.status_code == 200
+    assert status_response.json()["connected"] is True
+
+    disconnect_response = client.delete("/integrations/notion")
+    assert disconnect_response.status_code == 204
+
+    status_response = client.get("/integrations/notion/status")
+    assert status_response.status_code == 200
+    assert status_response.json() == {
+        "connected": False,
+        "workspace_name": None,
+        "owner_email": None,
+        "meetingflow_page_url": None,
+    }
+
+    unconnected_response = client.post(f"/meetings/{meeting_id}/notion-draft")
+    assert unconnected_response.status_code == 409
 
 
 def test_notion_create_page_sends_initial_children_and_appends_overflow(

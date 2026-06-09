@@ -7,7 +7,7 @@ from fastapi.responses import RedirectResponse
 from app.api.deps import CurrentUser, DbSession
 from app.core.config import get_settings
 from app.crud.meetings import get_meeting
-from app.crud.notion_accounts import get_notion_account_for_user, upsert_notion_account
+from app.crud.notion_accounts import delete_notion_account, get_notion_account_for_user, upsert_notion_account
 from app.crud.teams import get_active_team
 from app.schemas.integration import NotionDraftResponse, NotionStatus
 from app.services.integrations.notion import (
@@ -67,6 +67,13 @@ def connect_notion(current_user: CurrentUser, return_to: str | None = Query(defa
             path="/",
         )
     return response
+
+
+@router.delete("/integrations/notion", status_code=status.HTTP_204_NO_CONTENT)
+def disconnect_notion(db: DbSession, current_user: CurrentUser) -> None:
+    account = get_notion_account_for_user(db, current_user.id)
+    if account:
+        delete_notion_account(db, account)
 
 
 @router.get("/integrations/notion/callback")

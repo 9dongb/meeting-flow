@@ -1,9 +1,10 @@
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.core.crypto import encrypt_secret
+from app.models.action_item_calendar_link import ActionItemCalendarLink
 from app.models.google_account import UserGoogleAccount
 from app.models.user import User
 
@@ -14,6 +15,12 @@ def get_google_account_for_user(db: Session, user_id: int) -> UserGoogleAccount 
 
 def get_google_account_by_sub(db: Session, google_sub: str) -> UserGoogleAccount | None:
     return db.scalar(select(UserGoogleAccount).where(UserGoogleAccount.google_sub == google_sub))
+
+
+def delete_google_account(db: Session, account: UserGoogleAccount) -> None:
+    db.execute(delete(ActionItemCalendarLink).where(ActionItemCalendarLink.user_id == account.user_id))
+    db.delete(account)
+    db.commit()
 
 
 def upsert_google_account(

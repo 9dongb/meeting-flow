@@ -10,6 +10,11 @@ def get_notion_account_for_user(db: Session, user_id: int) -> UserNotionAccount 
     return db.scalar(select(UserNotionAccount).where(UserNotionAccount.user_id == user_id))
 
 
+def delete_notion_account(db: Session, account: UserNotionAccount) -> None:
+    db.delete(account)
+    db.commit()
+
+
 def upsert_notion_account(
     db: Session,
     user: User,

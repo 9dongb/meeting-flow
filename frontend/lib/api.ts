@@ -102,8 +102,14 @@ export const api = {
   syncGoogleCalendarNow() {
     return request<GoogleCalendarStatus>("/integrations/google-calendar/sync", { method: "POST" });
   },
+  disconnectGoogleCalendar() {
+    return request<void>("/integrations/google-calendar", { method: "DELETE" });
+  },
   getNotionStatus() {
     return request<NotionStatus>("/integrations/notion/status");
+  },
+  disconnectNotion() {
+    return request<void>("/integrations/notion", { method: "DELETE" });
   },
   listMeetings() {
     return request<Meeting[]>("/meetings");

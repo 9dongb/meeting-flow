@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 
 from app.api.deps import CurrentUser, DbSession
 from app.core.config import get_settings
-from app.crud.google_accounts import get_google_account_for_user, update_calendar_settings, upsert_google_account
+from app.crud.google_accounts import delete_google_account, get_google_account_for_user, update_calendar_settings, upsert_google_account
 from app.crud.action_items import list_user_action_items
 from app.crud.teams import get_active_team
 from app.models.action_item_calendar_link import ActionItemCalendarLink
@@ -131,6 +131,13 @@ def google_calendar_callback(
         path="/",
     )
     return redirect
+
+
+@router.delete("", status_code=status.HTTP_204_NO_CONTENT)
+def disconnect_google_calendar(db: DbSession, current_user: CurrentUser) -> None:
+    account = get_google_account_for_user(db, current_user.id)
+    if account:
+        delete_google_account(db, account)
 
 
 @router.patch("/settings", response_model=GoogleCalendarStatus)
