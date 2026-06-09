@@ -16,7 +16,7 @@ export default function LoginPage() {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [name, setName] = useState("홍길동");
   const [email, setEmail] = useState("demo@meetingflow.ai");
-  const [password, setPassword] = useState("password123");
+  const [password, setPassword] = useState("demo@meetingflow.ai");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
