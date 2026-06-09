@@ -9,6 +9,8 @@ type PopoverParticipant = Participant & {
   source_text?: string | null;
 };
 
+const OUTSIDE_WORKSPACE_PARTICIPANT_LABEL = "워크스페이스 외부 참석자";
+
 export function ParticipantsPopover({ participants }: { participants: PopoverParticipant[] }) {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState({ left: 0, top: 0 });
@@ -91,7 +93,7 @@ export function ParticipantsPopover({ participants }: { participants: PopoverPar
                       </span>
                     ) : null}
                   </div>
-                  {participant.email ? <p className="mt-0.5 truncate text-xs text-slate-500">{participant.email}</p> : null}
+                  <p className="mt-0.5 truncate text-xs text-slate-500">{participant.email || OUTSIDE_WORKSPACE_PARTICIPANT_LABEL}</p>
                 </li>
               ))}
             </ul>
